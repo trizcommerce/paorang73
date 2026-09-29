@@ -778,6 +778,7 @@ def main():
         visible = {ws.title.strip() for ws in wb.worksheets if ws.sheet_state == "visible"}
         IMAGES.update(sheet_media.extract_images(path, MEDIA, only=visible))
         sheets += [ws for ws in wb.worksheets if ws.sheet_state == "visible"]
+    print("formats:", {k: v for k, v in sheet_media.STATS.items()})
     print("tabs:", len(sheets), "images:", sum(len(v) for cells in IMAGES.values() for v in cells.values()))
     cal = next((ws for ws in sheets if "캘린더" in ws.title or "스케줄" in ws.title), None)
     product_sheets = [ws for ws in sheets if ws is not cal and find_header(ws)]

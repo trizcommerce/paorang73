@@ -1,0 +1,761 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>__APP_NAME__</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F3F5F0; --surface:#FFFFFF; --surface-2:#E9EDE5; --ink:#1C261E; --muted:#667063; --line:#DCE1D6;
+  --accent:#2E6A27; --accent-ink:#FFFFFF; --accent-soft:#DDEBD8; --today:#2E6A27;
+  --sun:#B5412F; --sat:#3B5E9A; --chip-ink:#1C261E; --shadow:0 1px 2px rgba(28,38,30,.06),0 6px 24px rgba(28,38,30,.08);
+  --scrim:rgba(20,26,21,.42); --link:#1155CC;
+  --display:"Hahmlet","Nanum Myeongjo",Georgia,serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --nav-h:62px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111512; --surface:#1A201B; --surface-2:#232A24; --ink:#E4EAE1; --muted:#9AA596; --line:#2E372F;
+    --accent:#8CC97F; --accent-ink:#0F1A0D; --accent-soft:#25351F; --today:#8CC97F;
+    --sun:#F08E7B; --sat:#90B2EE; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35); --scrim:rgba(0,0,0,.6);
+    --link:#8AB4F8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111512; --surface:#1A201B; --surface-2:#232A24; --ink:#E4EAE1; --muted:#9AA596; --line:#2E372F;
+  --accent:#8CC97F; --accent-ink:#0F1A0D; --accent-soft:#25351F; --today:#8CC97F;
+  --sun:#F08E7B; --sat:#90B2EE; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35); --scrim:rgba(0,0,0,.6);
+  --link:#8AB4F8;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+a{color:var(--accent)}
+.app{height:100%;max-width:600px;margin:0 auto;display:flex;flex-direction:column;position:relative;background:var(--bg)}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+.view[hidden]{display:none!important}
+.topbar{padding:14px 16px 10px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.h-title{font-family:var(--display);font-weight:700;font-size:26px;line-height:1.15;letter-spacing:-.01em}
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px calc(var(--nav-h) + 28px)}
+
+/* ---- bottom nav ---- */
+.nav{position:absolute;left:0;right:0;bottom:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
+  display:grid;grid-template-columns:repeat(3,1fr);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:20}
+.nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;color:var(--muted);font-weight:500}
+.nav button svg{width:23px;height:23px}
+.nav button[aria-current="page"]{color:var(--accent)}
+
+/* ---- calendar ---- */
+.cal-head{display:flex;align-items:center;gap:6px}
+.icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--ink)}
+.icon-btn:active{background:var(--surface-2)}
+.today-btn{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;font-weight:500;background:var(--surface)}
+.cal-card{background:var(--surface);border-radius:20px;padding:10px 8px 8px;box-shadow:var(--shadow);touch-action:pan-y}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:var(--muted);font-weight:500;padding-bottom:6px}
+.wk span:nth-child(6){color:var(--sat)} .wk span:nth-child(7){color:var(--sun)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.day{position:relative;height:58px;display:flex;flex-direction:column;align-items:center;padding-top:5px;border-radius:12px;font-variant-numeric:tabular-nums}
+.day .n{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;font-size:14px;font-weight:500;position:relative;z-index:1}
+.day.out .n{color:var(--muted);opacity:.45}
+.day.sat .n{color:var(--sat)} .day.sun .n,.day.hol .n{color:var(--sun)}
+.day.today .n{background:var(--today);color:var(--accent-ink)!important}
+.day.sel{background:var(--accent-soft)}
+.marks{display:flex;gap:3px;margin-top:4px;height:7px;align-items:center;position:relative;z-index:1}
+.mk{width:7px;height:7px;border-radius:50%;background:var(--c,var(--muted))}
+.mk.reel{border-radius:2px}
+.mk.post{border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1.6px var(--c,var(--muted))}
+.mk.story{width:5px;height:5px}
+.mk.more{width:auto;height:auto;background:none;font-size:9px;line-height:1;color:var(--muted)}
+.band{position:absolute;left:0;right:0;height:4px;background:var(--c)}
+.band.s{left:6px;border-top-left-radius:3px;border-bottom-left-radius:3px}
+.band.e{right:6px;border-top-right-radius:3px;border-bottom-right-radius:3px}
+.open-tag{position:absolute;top:2px;right:2px;font-size:8.5px;font-weight:600;letter-spacing:.04em;color:var(--sun);z-index:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:12px 4px 0;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:4px;border-radius:2px;background:var(--c)}
+
+.agenda{margin-top:22px}
+.ag-date{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.ag-date .big{font-family:var(--display);font-size:22px;font-weight:700}
+.ag-date .dow{color:var(--muted);font-size:14px}
+.ag-sub{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px}
+.pill{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;background:var(--c,var(--surface-2));color:var(--chip-ink);white-space:nowrap}
+.pill.ghost{background:var(--surface-2);color:var(--ink)}
+.pill.line{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--muted)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);background:var(--surface);border-radius:16px;border:1px dashed var(--line)}
+
+.list{display:flex;flex-direction:column;gap:10px}
+.entry{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;text-align:left;width:100%;background:var(--surface);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow)}
+.entry:active{transform:scale(.99)}
+.fmt{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:11px;font-weight:600;letter-spacing:-.01em;background:var(--surface-2);color:var(--ink)}
+.fmt.reel{background:var(--ink);color:var(--bg)}
+.fmt.post{box-shadow:inset 0 0 0 1.5px var(--ink);background:transparent}
+.fmt.story{border-radius:50%}
+.fmt.meeting{background:var(--accent-soft);color:var(--accent)}
+.e-body{min-width:0}
+.e-title{font-weight:600;font-size:15px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
+.e-meta{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:5px;font-size:12px;color:var(--muted)}
+.dotc{width:8px;height:8px;border-radius:50%;background:var(--c);display:inline-block}
+.chev{color:var(--muted);width:18px;height:18px}
+.e-prev{font-size:13px;color:var(--muted);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* ---- pager (products / months) ---- */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 12px;scrollbar-width:none;scroll-snap-type:x proximity}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;height:36px;padding:0 14px;border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:7px;scroll-snap-align:start;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);box-shadow:none}
+.tab .dotc{width:9px;height:9px}
+.pager{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.pager::-webkit-scrollbar{display:none}
+.page{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px calc(var(--nav-h) + 28px);overscroll-behavior-y:contain}
+
+.hero{background:var(--surface);border-radius:20px;padding:18px 18px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero .swatch{position:absolute;inset:0 0 auto 0;height:6px;background:var(--c)}
+.hero h2{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.2;margin:6px 0 2px;word-break:keep-all;text-wrap:balance}
+.hero .full{font-size:13px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin-top:14px;font-size:14px}
+.kv dt{color:var(--muted);max-width:6.5em;word-break:keep-all}
+.kv dd{margin:0;white-space:pre-line;word-break:keep-all}
+.status{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600}
+.status.live{background:var(--sun);color:#fff}
+.status.soon{background:var(--accent);color:var(--accent-ink)}
+.status.done{background:var(--surface-2);color:var(--muted)}
+details.fold{background:var(--surface);border-radius:16px;margin-top:12px;box-shadow:var(--shadow)}
+details.fold summary{list-style:none;padding:14px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-top:-4px;transition:transform .2s}
+details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+.fold-body{padding:0 16px 16px;white-space:pre-line;font-size:14px;line-height:1.7;word-break:keep-all}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;margin:26px 2px 10px}
+.sec-h h3{font-family:var(--display);font-size:18px;font-weight:700;margin:0}
+.sec-h small{color:var(--muted);font-size:12.5px}
+.sec-sub{font-size:12.5px;color:var(--muted);margin:-6px 2px 12px;white-space:pre-line}
+
+.tl{display:flex;flex-direction:column}
+.tl-row{display:grid;grid-template-columns:62px 1fr;gap:10px;position:relative;padding-bottom:12px}
+.tl-row::before{content:"";position:absolute;left:30px;top:44px;bottom:0;width:1px;background:var(--line)}
+.tl-row:last-child::before{display:none}
+.tl-d{text-align:center;padding-top:6px;font-variant-numeric:tabular-nums}
+.tl-d b{display:block;font-size:13px;font-weight:600;letter-spacing:.02em}
+.tl-d span{display:block;font-size:12px;color:var(--muted)}
+.tl-d.open b{color:var(--sun)}
+.tl-d.today b{color:var(--accent)}
+.tl-items{display:flex;flex-direction:column;gap:8px}
+
+.check{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--line);flex:none}
+.check.on{background:var(--accent);box-shadow:none;color:var(--accent-ink)}
+
+/* ---- sheet ---- */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40;opacity:0;transition:opacity .2s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;max-height:88%;background:var(--surface);border-radius:22px 22px 0 0;z-index:41;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.show{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:9px auto 0;flex:none}
+.sheet-head{padding:12px 18px 12px;border-bottom:1px solid var(--line);flex:none;display:flex;gap:10px;align-items:flex-start}
+.sheet-head .t{flex:1;min-width:0}
+.sheet-head h3{font-family:var(--display);font-size:20px;line-height:1.3;margin:6px 0 0;word-break:keep-all;text-wrap:balance}
+.sheet-body{overflow-y:auto;padding:6px 18px 28px;overscroll-behavior:contain}
+.field{padding:14px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field .lb{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--accent);margin-bottom:6px}
+.field .tx{white-space:pre-line;font-size:14.5px;line-height:1.75;word-break:keep-all;overflow-wrap:anywhere}
+.cut{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
+.cut .lb{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.foot{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;padding:12px 0}
+.gallery .lb{grid-column:1/-1;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--accent)}
+.gallery button{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surface-2);max-width:100%}
+.gallery img{width:100%;height:100%;object-fit:cover;display:block}
+.hero .gallery{padding-bottom:0}
+.fx-b{font-weight:700}
+.fx-i{font-style:italic}
+.fx-u{text-decoration:underline;text-underline-offset:2px}
+.fx-s{text-decoration:line-through}
+.fx-u.fx-s{text-decoration:underline line-through}
+.fx-c{color:var(--fc)}
+.fx-z1{font-size:1.14em} .fx-z2{font-size:1.3em;line-height:1.45} .fx-zm{font-size:.88em}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fx-c{color:color-mix(in srgb,var(--fc) 55%,#fff)}}
+:root[data-theme="dark"] .fx-c{color:color-mix(in srgb,var(--fc) 55%,#fff)}
+.tx a.ref{color:var(--link);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.tx .fx-c a.ref{color:inherit}
+.viewer{position:fixed;inset:0;z-index:60;background:rgba(8,10,8,.94);display:flex;flex-direction:column}
+.viewer[hidden]{display:none!important}
+.viewer .bar{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;color:#fff;font-size:14px;font-variant-numeric:tabular-nums}
+.viewer .bar button{color:#fff;width:40px;height:40px;display:grid;place-items:center;border-radius:12px}
+.viewer .stage{flex:1;min-height:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.viewer .stage::-webkit-scrollbar{display:none}
+.viewer .stage div{flex:0 0 100%;scroll-snap-align:center;display:grid;place-items:center;padding:0 8px calc(16px + env(safe-area-inset-bottom,0px))}
+.viewer .stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="app" id="app">
+  <section class="view" id="v-cal" aria-label="캘린더">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow" id="cal-year">2026</div>
+        <div class="h-title" id="cal-title">9월</div>
+      </div>
+      <div class="cal-head">
+        <button class="today-btn" id="btn-today" type="button">오늘</button>
+        <button class="icon-btn" id="btn-prev" type="button" aria-label="이전 달"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="icon-btn" id="btn-next" type="button" aria-label="다음 달"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="scroll" id="cal-scroll">
+      <div class="cal-card" id="cal-card">
+        <div class="wk"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
+        <div class="grid" id="cal-grid"></div>
+        <div class="legend" id="cal-legend"></div>
+      </div>
+      <div class="agenda" id="agenda"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-prod" aria-label="제품" hidden>
+    <div class="topbar"><div><div class="eyebrow">공구 콘텐츠 기획</div><div class="h-title">제품별</div></div></div>
+    <div class="tabs" id="prod-tabs" role="tablist"></div>
+    <div class="pager" id="prod-pager"></div>
+  </section>
+
+  <section class="view" id="v-month" aria-label="월별" hidden>
+    <div class="topbar"><div><div class="eyebrow">월간 콘텐츠 캘린더</div><div class="h-title">월별</div></div></div>
+    <div class="tabs" id="month-tabs" role="tablist"></div>
+    <div class="pager" id="month-pager"></div>
+  </section>
+
+  <nav class="nav" aria-label="메뉴">
+    <button type="button" data-view="v-cal" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>캘린더</button>
+    <button type="button" data-view="v-prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>제품별</button>
+    <button type="button" data-view="v-month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>월별</button>
+  </nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
+  <div class="bar"><span id="viewer-count"></span><button type="button" id="viewer-close" aria-label="닫기"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="stage" id="viewer-stage"></div>
+</div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div class="t"><div id="sheet-meta" class="ag-sub" style="margin:0"></div><h3 id="sheet-title"></h3></div>
+    <button class="icon-btn" id="sheet-close" type="button" aria-label="닫기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = s => document.querySelector(s);
+const DOW = ["일","월","화","수","목","금","토"];
+const FMT = {reel:"릴스", post:"피드", story:"스토리", qa:"무물", live:"라방", ad:"광고", meeting:"일정", free:"자유", etc:"기타"};
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+const LINK = /⟦([^|⟧]*)\|([^⟧]*)⟧/g;  // 시트 링크: ⟦문구|주소⟧
+const FX = /⟪([^⟫]*)⟫/g;               // 시트 글자 서식: ⟪b u c=FF0000 z=+1⟫ … ⟪/⟫
+const plain = s => String(s ?? "").replace(FX, "").replace(LINK, "$1");
+const escRaw = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const esc = s => escRaw(plain(s));
+const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
+const autolink = t => escRaw(t).replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length > 42 ? u.slice(0, 40) + "…" : u}</a>`);
+function linkify(s) {
+  let out = "", last = 0;
+  for (const m of s.matchAll(LINK)) {
+    out += autolink(s.slice(last, m.index));
+    out += `<a class="ref" href="${escRaw(safeUrl(m[2]))}" target="_blank" rel="noopener">${escRaw(m[1] || "링크")}</a>`;
+    last = m.index + m[0].length;
+  }
+  return out + autolink(s.slice(last));
+}
+function fxOpen(tok) { // "b u c=FF0000 z=+1" → <span class=… style=…>
+  const cls = [], style = [];
+  tok.split(/\s+/).forEach(t => {
+    if (/^[bius]$/.test(t)) cls.push("fx-" + t);
+    else if (/^c=[0-9A-Fa-f]{6}$/.test(t)) { cls.push("fx-c"); style.push(`--fc:#${t.slice(2)}`); }
+    else if (t === "z=+1") cls.push("fx-z1");
+    else if (t === "z=+2") cls.push("fx-z2");
+    else if (t === "z=-1") cls.push("fx-zm");
+  });
+  return cls.length ? `<span class="${cls.join(" ")}"${style.length ? ` style="${style.join(";")}"` : ""}>` : "<span>";
+}
+function rich(s) { // 시트 서식·링크를 HTML 로 (짝이 안 맞는 표시는 무시)
+  s = String(s ?? ""); let out = "", last = 0, open = false;
+  for (const m of s.matchAll(FX)) {
+    out += linkify(s.slice(last, m.index));
+    if (open) { out += "</span>"; open = false; }
+    if (m[1] !== "/") { out += fxOpen(m[1]); open = true; }
+    last = m.index + m[0].length;
+  }
+  out += linkify(s.slice(last));
+  return open ? out + "</span>" : out;
+}
+const gallery = (imgs, label) => imgs && imgs.length ? `<div class="gallery">${label ? `<div class="lb">${esc(label)}</div>` : ""}${imgs.map((src, i) =>
+  `<button type="button" data-view-imgs="${escRaw(imgs.join("|"))}" data-i="${i}" aria-label="사진 ${i + 1} 크게 보기"><img src="${escRaw(src)}" alt="" loading="lazy" decoding="async"></button>`).join("")}</div>` : "";
+const pad = n => String(n).padStart(2, "0");
+const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const md = k => { const d = parse(k); return `${d.getMonth() + 1}.${d.getDate()}`; };
+const mdDow = k => { const d = parse(k); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`; };
+const TODAY = key(new Date());
+const normT = s => plain(s || "").replace(/[\s\p{P}\p{S}]/gu, "");
+const similar = (a, b) => { a = normT(stripFmt(a)); b = normT(stripFmt(b)); if (a.length < 4 || b.length < 4) return a === b;
+  return a.includes(b.slice(0, 6)) || b.includes(a.slice(0, 6)); };
+
+function fmtOf(s) {
+  s = s || "";
+  if (/광고/.test(s)) return "ad";
+  if (/릴스/.test(s)) return "reel";
+  if (/캐러셀|게시글|게시물|피드/.test(s)) return "post";
+  if (/무물/.test(s)) return "qa";
+  if (/라이브|라방/.test(s)) return "live";
+  if (/자율|자유|일상/.test(s)) return "free";
+  if (/스토리/.test(s)) return "story";
+  return "etc";
+}
+const stripFmt = s => plain(s || "").replace(/^[\s🙏🎀]*\[(릴스|캐러셀|게시글|피드)\]\s*/u, "").trim();
+
+/* ---------------- index everything by date ---------------- */
+const P = Object.fromEntries(DATA.products.map(p => [p.id, p]));
+const byDate = {};
+const push = (k, e) => (byDate[k] ||= []).push(e);
+
+DATA.products.forEach(p => p.slots.forEach((s, i) => {
+  if (!s.date) return;
+  const fmt = fmtOf(s.format);
+  push(s.date, {src: "slot", pid: p.id, slot: s, fmt,
+    title: s.title || (fmt === "story" ? `${p.name} 스토리` : s.format),
+    sort: fmt === "story" ? 2 : 1});
+}));
+
+DATA.events.forEach(ev => {
+  const k = ev.date;
+  if (ev.end > ev.date && ev.kind === "content") { // 여러 날에 걸친 칸 = 여행·출장 같은 일정
+    for (let d = parse(ev.date); key(d) <= ev.end; d.setDate(d.getDate() + 1))
+      push(key(d), {src: "event", ev, fmt: "meeting", title: ev.text.replace(/\n/g, " "), sort: 0});
+    return;
+  }
+  if (ev.kind !== "content") {
+    push(k, {src: "event", ev, fmt: "meeting", title: ev.text.replace(/\n/g, " "), sort: 0, holiday: ev.kind === "holiday"});
+    return;
+  }
+  const list = byDate[k] || [];
+  const isStory = ev.text.trim() === "스토리";
+  const match = list.find(e => e.src === "slot" && !e.matched && (e.pid === ev.product || !ev.product) &&
+    (isStory ? e.fmt === "story" : similar(e.title, ev.text)));
+  if (match) { match.matched = true; return; }
+  if (!ev.product && /커머스|공구/.test(ev.text)) {
+    const hit = DATA.products.find(p => p.slots.some(s => s.title && similar(s.title, ev.text)));
+    if (hit) ev.product = hit.id;
+  }
+  push(k, {src: "event", ev, pid: ev.product, fmt: isStory ? "story" : fmtOf(ev.text) === "etc" ? (ev.product && !/진행|기획전/.test(ev.text) ? "reel" : "meeting") : fmtOf(ev.text),
+    title: isStory ? `${P[ev.product]?.name || ""} 스토리`.trim() : ev.text.replace(/\n/g, " "), sort: isStory ? 2 : 1});
+});
+
+const isTopic = l => l === "주제" || l === "콘텐츠";
+const topicTitle = t => { // "[릴스]" 한 줄 + 제목 줄로 나뉜 경우 합치기
+  const ls = plain(t).split("\n").map(x => x.trim()).filter(Boolean);
+  return /^\[[^\]]+\]$/.test(ls[0] || "") && ls[1] ? `${ls[0]} ${ls[1]}` : (ls[0] || "");
+};
+const storyTitle = t => plain(t).replace(/^[✔\s]+/, "").replace(/^\[스토리\]\s*>?\s*/, "").split("\n")[0] || "스토리";
+function dayGroups(d) { // 하루 칸을 콘텐츠 단위로 묶기: 주제/콘텐츠 행마다 새 묶음, 스토리는 따로
+  const topics = [], stories = [];
+  d.fields.forEach(x => {
+    if (x.label === "스토리") stories.push(x);
+    else if (isTopic(x.label) || !topics.length) topics.push([x]);
+    else topics[topics.length - 1].push(x);
+  });
+  return {topics: topics.filter(g => isTopic(g[0].label)), stories};
+}
+DATA.months.filter(m => m.kind === "grid").forEach(m => m.days.forEach(d => {
+  const {topics, stories} = dayGroups(d);
+  topics.forEach((g, gi) => {
+    const first = topicTitle(g[0].text);
+    const entry = {src: "month", mid: m.id, day: d, fmt: fmtOf(first), title: stripFmt(first) || first, sort: 1, fields: g,
+      images: gi === 0 ? d.images : undefined};
+    const list = byDate[d.date] || [];
+    if (/커머스|공구/.test(first) && list.some(e => e.src === "slot" && e.fmt !== "story")) return;
+    const dup = list.findIndex(e => e.src === "event" && !e.holiday && similar(e.title, first));
+    if (dup >= 0) { entry.pid = list[dup].pid; list[dup] = entry; } else push(d.date, entry);
+  });
+  stories.forEach(x => push(d.date, {src: "month", mid: m.id, day: d, fmt: "story", title: storyTitle(x.text), sort: 2, fields: [x]}));
+  if (d.holiday) push(d.date, {src: "event", fmt: "meeting", title: d.holiday, sort: 0, holiday: true, ev: {text: d.holiday}});
+}));
+Object.values(byDate).forEach(l => l.sort((a, b) => a.sort - b.sort));
+
+const periods = DATA.products.filter(p => p.period).map(p => ({pid: p.id, s: p.period[0], e: p.period[1]}));
+const periodsOn = k => periods.filter(r => r.s <= k && k <= r.e);
+const colorOf = pid => P[pid]?.color || "var(--muted)";
+const pname = pid => P[pid] ? `${P[pid].name}${P[pid].round ? " " + P[pid].round : ""}` : "";
+
+/* ---------------- calendar ---------------- */
+let cur = parse(TODAY); cur.setDate(1);
+let sel = TODAY;
+const dataYearOk = cur.getFullYear() === DATA.year;
+if (!dataYearOk) { cur = new Date(DATA.year, 8, 1); sel = key(cur); }
+
+function renderCal() {
+  const y = cur.getFullYear(), m = cur.getMonth();
+  $("#cal-year").textContent = `${y}년 · __SELLER__`;
+  $("#cal-title").textContent = `${m + 1}월`;
+  const first = new Date(y, m, 1);
+  const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7));
+  const cells = [];
+  const weeks = Math.ceil((((first.getDay() + 6) % 7) + new Date(y, m + 1, 0).getDate()) / 7);
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const k = key(d), list = byDate[k] || [];
+    const cls = ["day"];
+    if (d.getMonth() !== m) cls.push("out");
+    if (d.getDay() === 6) cls.push("sat");
+    if (d.getDay() === 0 || list.some(e => e.holiday)) cls.push("sun");
+    if (k === TODAY) cls.push("today");
+    if (k === sel) cls.push("sel");
+    const marks = list.filter(e => !e.holiday);
+    const shown = marks.slice(0, 4).map(e => `<i class="mk ${e.fmt}" style="--c:${e.pid ? colorOf(e.pid) : "var(--muted)"}"></i>`).join("");
+    const more = marks.length > 4 ? `<i class="mk more">+${marks.length - 4}</i>` : "";
+    const bands = periodsOn(k).map((r, j) => {
+      const b = []; if (r.s === k || d.getDay() === 1) b.push("s"); if (r.e === k || d.getDay() === 0) b.push("e");
+      return `<i class="band ${b.join(" ")}" style="--c:${colorOf(r.pid)};bottom:${3 + j * 5}px"></i>`;
+    }).join("");
+    const open = DATA.products.some(p => p.period && p.period[0] === k) ? `<span class="open-tag">OPEN</span>` : "";
+    cells.push(`<button type="button" class="${cls.join(" ")}" data-k="${k}" aria-label="${mdDow(k)}${marks.length ? `, 콘텐츠 ${marks.length}개` : ""}"><span class="n">${d.getDate()}</span><span class="marks">${shown}${more}</span>${bands}${open}</button>`);
+  }
+  $("#cal-grid").innerHTML = cells.join("");
+  const mStart = key(new Date(y, m, 1)), mEnd = key(new Date(y, m + 1, 0));
+  const lg = periods.filter(r => r.s <= mEnd && r.e >= mStart)
+    .map(r => `<span><i style="--c:${colorOf(r.pid)}"></i>${esc(pname(r.pid))} 공구 ${md(r.s)}–${md(r.e)}</span>`);
+  $("#cal-legend").innerHTML = lg.join("");
+  $("#cal-legend").hidden = !lg.length;
+  renderAgenda();
+}
+
+function entryHTML(e, idx, opts = {}) {
+  const p = e.pid ? P[e.pid] : null;
+  const meta = [];
+  if (p && !opts.noProduct) meta.push(`<span><i class="dotc" style="--c:${p.color}"></i> ${esc(pname(e.pid))}</span>`);
+  if (e.src === "slot" && e.slot.label) meta.push(`<span>${esc(e.slot.label)}</span>`);
+  if (e.src === "slot" && e.fmt === "story" && e.slot.items.length > 1) meta.push(`<span>컷 ${e.slot.items.length}개</span>`);
+  const nImg = e.src === "slot" ? e.slot.items.reduce((n, it) => n + (it.__images || []).length, 0)
+    : e.src === "month" ? (e.images || []).length : 0;
+  if (nImg) meta.push(`<span>사진 ${nImg}</span>`);
+  if (e.src === "month") meta.push(`<span>${esc(DATA.months.find(m => m.id === e.mid).name)} 월간 기획</span>`);
+  if (e.src === "event" && !p && !e.holiday) meta.push(`<span>일정</span>`);
+  if (e.src === "event" && p) meta.push(`<span>캘린더 메모</span>`);
+  let prev = "";
+  if (e.src === "slot") {
+    const notes = e.slot.notes.join(" · ");
+    const first = e.slot.items.map(it => Object.entries(it).find(([k]) => k !== "__images" && !k.includes("기한"))?.[1]).find(Boolean) || "";
+    prev = notes || first;
+  }
+  const label = e.holiday ? "휴일" : FMT[e.fmt];
+  return `<button type="button" class="entry" data-idx="${idx}">
+    <span class="fmt ${e.fmt}">${label}</span>
+    <span class="e-body"><span class="e-title">${esc(e.title)}</span>
+      ${prev ? `<span class="e-prev">${esc(prev.replace(/\n+/g, " "))}</span>` : ""}
+      ${meta.length ? `<span class="e-meta">${meta.join("")}</span>` : ""}</span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+  </button>`;
+}
+
+let agendaList = [];
+function renderAgenda() {
+  agendaList = byDate[sel] || [];
+  const d = parse(sel);
+  const dday = [];
+  periodsOn(sel).forEach(r => dday.push(`<span class="pill" style="--c:${colorOf(r.pid)}">${esc(pname(r.pid))} 공구 진행</span>`));
+  DATA.products.forEach(p => {
+    if (!p.period || sel >= p.period[0]) return;
+    const n = Math.round((parse(p.period[0]) - d) / 864e5);
+    if (n > 0 && n <= 30) dday.push(`<span class="pill line">${esc(p.name)} 오픈 D-${n}</span>`);
+  });
+  const counts = {};
+  agendaList.forEach(e => { if (!e.holiday && e.fmt !== "meeting") counts[e.fmt] = (counts[e.fmt] || 0) + 1; });
+  const sum = Object.entries(counts).map(([f, n]) => `${FMT[f]} ${n}`).join(" · ");
+  $("#agenda").innerHTML = `
+    <div class="ag-date"><span class="big">${d.getMonth() + 1}월 ${d.getDate()}일</span><span class="dow">${DOW[d.getDay()]}요일${sel === TODAY ? " · 오늘" : ""}</span></div>
+    <div class="ag-sub">${dday.join("")}${sum ? `<span class="pill ghost">${sum}</span>` : ""}</div>
+    ${agendaList.length ? `<div class="list">${agendaList.map((e, i) => entryHTML(e, i)).join("")}</div>`
+      : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
+    <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트 · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a></p>`;
+}
+
+$("#cal-grid").addEventListener("click", ev => {
+  const b = ev.target.closest(".day"); if (!b) return;
+  sel = b.dataset.k;
+  const d = parse(sel);
+  if (d.getMonth() !== cur.getMonth()) { cur = new Date(d.getFullYear(), d.getMonth(), 1); }
+  renderCal();
+});
+$("#agenda").addEventListener("click", ev => {
+  const b = ev.target.closest(".entry"); if (b) openEntry(agendaList[+b.dataset.idx]);
+});
+const shift = n => { cur = new Date(cur.getFullYear(), cur.getMonth() + n, 1); renderCal(); };
+$("#btn-prev").onclick = () => shift(-1);
+$("#btn-next").onclick = () => shift(1);
+$("#btn-today").onclick = () => { sel = TODAY; cur = parse(TODAY); cur.setDate(1); if (!dataYearOk) cur = new Date(DATA.year, 8, 1); renderCal(); };
+(() => { // 달력 좌우 스와이프로 월 이동
+  let x0 = null, y0 = null;
+  const card = $("#cal-card");
+  card.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive: true});
+  card.addEventListener("touchend", e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) shift(dx < 0 ? 1 : -1);
+    x0 = null;
+  });
+})();
+
+/* ---------------- sheet ---------------- */
+const fieldHTML = (label, text) => `<div class="field"><div class="lb">${esc(label)}</div><div class="tx">${rich(text)}</div></div>`;
+function openSheet(meta, title, body) {
+  $("#sheet-meta").innerHTML = meta; $("#sheet-title").textContent = plain(title); $("#sheet-body").innerHTML = body;
+  const sh = $("#sheet"), sc = $("#scrim");
+  sh.hidden = sc.hidden = false;
+  $("#sheet-body").scrollTop = 0;
+  requestAnimationFrame(() => { sh.classList.add("show"); sc.classList.add("show"); });
+  $("#sheet-close").focus({preventScroll: true});
+}
+function closeSheet() {
+  const sh = $("#sheet"), sc = $("#scrim");
+  if (sh.hidden) return;
+  sh.classList.remove("show"); sc.classList.remove("show");
+  setTimeout(() => { sh.hidden = sc.hidden = true; }, 230);
+}
+$("#scrim").onclick = closeSheet; $("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+(() => { // 시트 아래로 끌어 닫기
+  let y0 = null; const head = $(".sheet-head"), grab = $(".grab");
+  [head, grab].forEach(el => {
+    el.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, {passive: true});
+    el.addEventListener("touchend", e => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; });
+  });
+})();
+
+/* ---------------- 사진 크게 보기 ---------------- */
+let viewerBack = null;
+function openViewer(imgs, i) {
+  const v = $("#viewer"), stage = $("#viewer-stage");
+  stage.innerHTML = imgs.map(src => `<div><img src="${escRaw(src)}" alt="" decoding="async"></div>`).join("");
+  v.hidden = false;
+  const count = () => { $("#viewer-count").textContent = `${Math.round(stage.scrollLeft / stage.clientWidth) + 1} / ${imgs.length}`; };
+  stage.onscroll = count;
+  requestAnimationFrame(() => { stage.scrollLeft = i * stage.clientWidth; count(); });
+  viewerBack = document.activeElement;
+  $("#viewer-close").focus({preventScroll: true});
+}
+function closeViewer() {
+  const v = $("#viewer"); if (v.hidden) return false;
+  v.hidden = true; $("#viewer-stage").innerHTML = "";
+  viewerBack?.focus?.({preventScroll: true});
+  return true;
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-view-imgs]"); if (!b) return;
+  ev.stopPropagation();
+  openViewer(b.dataset.viewImgs.split("|"), +b.dataset.i);
+});
+$("#viewer-close").onclick = closeViewer;
+$("#viewer-stage").addEventListener("click", ev => { if (ev.target.tagName !== "IMG") closeViewer(); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && closeViewer()) ev.stopImmediatePropagation(); }, true);
+
+function slotBody(p, s) {
+  let h = "";
+  if (s.notes.length) h += fieldHTML("메모", s.notes.join("\n"));
+  const many = s.items.length > 1;
+  s.items.forEach((it, i) => {
+    const inner = Object.entries(it).filter(([k]) => k !== "__images").map(([k, v]) => fieldHTML(k, v)).join("") + gallery(it.__images, "비주얼 예시");
+    h += many ? `<div class="cut"><div class="lb">컷 ${i + 1}</div>${inner}</div>` : inner;
+  });
+  return h || `<div class="empty">상세 내용이 없어요.</div>`;
+}
+function openSlot(p, s) {
+  const meta = `<span class="pill" style="--c:${p.color}">${esc(pname(p.id))}</span><span class="pill ghost">${esc(s.label)}${s.date ? " · " + md(s.date) + " " + DOW[parse(s.date).getDay()] : ""}</span><span class="pill line">${FMT[fmtOf(s.format)]}</span>`;
+  openSheet(meta, s.title || `${s.format}${s.items.length > 1 ? ` · 컷 ${s.items.length}개` : ""}`, slotBody(p, s));
+}
+function openEntry(e) {
+  if (!e) return;
+  if (e.src === "slot") return openSlot(P[e.pid], e.slot);
+  if (e.src === "month") {
+    const m = DATA.months.find(x => x.id === e.mid);
+    const meta = `<span class="pill ghost">${esc(m.name)} 월간 기획</span><span class="pill line">${FMT[e.fmt]}</span>${e.day.holiday ? `<span class="pill line">${esc(e.day.holiday)}</span>` : ""}`;
+    return openSheet(meta, e.title, e.fields.map(f => fieldHTML(f.label, f.text)).join("") + gallery(e.images, "사진"));
+  }
+  const p = e.pid ? P[e.pid] : null;
+  const meta = (p ? `<span class="pill" style="--c:${p.color}">${esc(pname(p.id))}</span>` : "") + `<span class="pill ghost">${mdDow(e.ev.date || sel)}</span>`;
+  const body = fieldHTML("캘린더 메모", e.ev.text) + (p ? `<div class="field"><div class="tx"><button type="button" class="pill line" data-goto="${p.id}">${esc(pname(p.id))} 기획 전체 보기 →</button></div></div>` : "");
+  openSheet(meta, e.title, body);
+}
+$("#sheet-body").addEventListener("click", ev => {
+  const g = ev.target.closest("[data-goto]"); if (!g) return;
+  closeSheet(); showView("v-prod"); prodPager.go(DATA.products.findIndex(p => p.id === g.dataset.goto));
+});
+
+/* ---------------- pager helper ---------------- */
+function makePager(tabsEl, pagerEl, items, tabHTML, pageHTML, storeKey) {
+  tabsEl.innerHTML = items.map((it, i) => `<button type="button" class="tab" role="tab" data-i="${i}" aria-selected="false">${tabHTML(it)}</button>`).join("");
+  pagerEl.innerHTML = items.map((it, i) => `<article class="page" data-i="${i}" role="tabpanel">${pageHTML(it)}</article>`).join("");
+  let idx = 0;
+  const mark = i => {
+    idx = i;
+    tabsEl.querySelectorAll(".tab").forEach((t, j) => t.setAttribute("aria-selected", j === i));
+    const t = tabsEl.children[i];
+    if (t) tabsEl.scrollTo({left: t.offsetLeft - 16, behavior: "smooth"});
+    store.set(storeKey, i);
+  };
+  const go = (i, smooth = true) => { pagerEl.scrollTo({left: i * pagerEl.clientWidth, behavior: smooth ? "smooth" : "auto"}); mark(i); };
+  tabsEl.addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) go(+t.dataset.i); });
+  let tm;
+  pagerEl.addEventListener("scroll", () => {
+    clearTimeout(tm);
+    tm = setTimeout(() => { const i = Math.round(pagerEl.scrollLeft / pagerEl.clientWidth); if (i !== idx) mark(i); }, 80);
+  }, {passive: true});
+  window.addEventListener("resize", () => pagerEl.scrollTo({left: idx * pagerEl.clientWidth}));
+  return {go, get idx() { return idx; }, init(i) { mark(i); requestAnimationFrame(() => go(i, false)); }};
+}
+
+/* ---------------- products ---------------- */
+function statusOf(p) {
+  if (!p.period) return "";
+  if (TODAY < p.period[0]) {
+    const n = Math.round((parse(p.period[0]) - parse(TODAY)) / 864e5);
+    return `<span class="status soon">오픈 D-${n}</span>`;
+  }
+  if (TODAY <= p.period[1]) return `<span class="status live">공구 진행 중</span>`;
+  return `<span class="status done">종료</span>`;
+}
+function productPage(p) {
+  const pi = DATA.products.indexOf(p);
+  const short = p.info.filter(x => plain(x.text).length < 260 && !/소구점|키워드/.test(x.label));
+  const long = p.info.filter(x => !short.includes(x) && x.label !== "공구상품");
+  const kv = short.filter(x => x.label !== "공구상품").map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
+  const byDay = [];
+  p.slots.forEach((s, si) => {
+    const last = byDay[byDay.length - 1];
+    if (last && last.label === s.label && last.date === s.date) last.slots.push([s, si]);
+    else byDay.push({label: s.label, date: s.date, slots: [[s, si]]});
+  });
+  const reels = p.slots.filter(s => ["reel", "post"].includes(fmtOf(s.format))).length;
+  const stories = p.slots.filter(s => fmtOf(s.format) === "story").reduce((n, s) => n + Math.max(1, s.items.length), 0);
+  const tl = byDay.map(g => {
+    const d = g.date ? parse(g.date) : null;
+    const cls = ["tl-d"]; if (/OPEN/i.test(g.label)) cls.push("open"); if (g.date === TODAY) cls.push("today");
+    return `<div class="tl-row"><div class="${cls.join(" ")}"><b>${esc(g.label)}</b>${d ? `<span>${d.getMonth() + 1}.${d.getDate()} ${DOW[d.getDay()]}</span>` : ""}</div>
+      <div class="tl-items">${g.slots.map(([s, si]) => {
+        const e = {src: "slot", pid: p.id, slot: {...s, label: ""}, fmt: fmtOf(s.format), title: s.title || (fmtOf(s.format) === "story" ? "스토리" : s.format)};
+        return entryHTML(e, `${pi}:${si}`, {noProduct: true});
+      }).join("")}</div></div>`;
+  }).join("");
+  return `<div class="hero" style="--c:${p.color}"><span class="swatch"></span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">${statusOf(p)}${p.round ? `<span class="pill ghost">${esc(p.round)}</span>` : ""}</div>
+      <h2>${esc(p.name)}</h2>${p.fullName ? `<div class="full">${esc(p.fullName)}</div>` : ""}
+      <dl class="kv">${kv}</dl>${gallery(p.images)}</div>
+    ${long.map(x => `<details class="fold"><summary>${esc(x.label.length > 24 ? "참고" : x.label)}</summary><div class="fold-body">${rich(x.label.length > 24 ? x.label + "\n" + x.text : x.text)}</div></details>`).join("")}
+    <div class="sec-h"><h3>업로드 타임라인</h3><small>피드 ${reels} · 스토리 ${stories}</small></div>
+    <div class="tl" data-pid="${p.id}">${tl}</div>`;
+}
+const prodPager = makePager($("#prod-tabs"), $("#prod-pager"), DATA.products,
+  p => `<i class="dotc" style="--c:${p.color}"></i>${esc(p.name)}${p.round && DATA.products.filter(x => x.name === p.name).length > 1 ? " " + esc(p.round) : ""}`,
+  productPage, "prodIdx");
+$("#prod-pager").addEventListener("click", ev => {
+  const b = ev.target.closest(".entry"); if (!b) return;
+  const [pi, si] = b.dataset.idx.split(":").map(Number);
+  openSlot(DATA.products[pi], DATA.products[pi].slots[si]);
+});
+
+/* ---------------- months ---------------- */
+function noteFolds(notes) {
+  return notes.map((n, i) => {
+    const cut = n.search(/\n/);  // 첫 줄은 접는 제목, 나머지는 서식 그대로 본문
+    const head = plain(cut < 0 ? n : n.slice(0, cut)).trim().replace(/^[💡🚩\s]+/u, "").slice(0, 30);
+    const body = cut < 0 ? n : n.slice(cut + 1).replace(/^\s*\n/, "");
+    return `<details class="fold"${i === 0 ? " open" : ""}><summary>${esc(head)}</summary><div class="fold-body">${rich(body.trim() ? body : n)}</div></details>`;
+  }).join("");
+}
+function monthPage(m) {
+  const mi = DATA.months.indexOf(m);
+  let body = "";
+  if (m.kind === "grid") {
+    body = `<div class="sec-h"><h3>날짜별 기획</h3><small>${m.days.length}일</small></div><div class="tl">` + m.days.map((d, di) => {
+      const dt = parse(d.date);
+      const {topics, stories} = dayGroups(d);
+      const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>`;
+      const items = topics.map((g, gi) => {
+        const t = topicTitle(g[0].text);
+        const why = g.find(x => /기획 의도|기대 효과/.test(x.label));
+        return `<button type="button" class="entry" data-m="${mi}:${di}:t${gi}"><span class="fmt ${fmtOf(t)}">${FMT[fmtOf(t)]}</span><span class="e-body"><span class="e-title">${esc(stripFmt(t) || t)}</span>${why ? `<span class="e-prev">${esc(why.text.replace(/\n+/g, " "))}</span>` : ""}</span>${chev}</button>`;
+      }).concat(stories.map((x, si) => `<button type="button" class="entry" data-m="${mi}:${di}:s${si}"><span class="fmt story">스토리</span><span class="e-body"><span class="e-title">${esc(storyTitle(x.text))}</span></span>${chev}</button>`));
+      const cls = ["tl-d"]; if (d.date === TODAY) cls.push("today");
+      return `<div class="tl-row"><div class="${cls.join(" ")}"><b>${dt.getDate()}일</b><span>${DOW[dt.getDay()]}${d.holiday ? " · " + esc(d.holiday) : ""}</span></div><div class="tl-items">${items.join("") || `<span class="pill line">${esc(d.holiday || "")}</span>`}</div></div>`;
+    }).join("") + `</div>`;
+    if (m.extra.length) body += m.extra.map(x => `<details class="fold"><summary>${esc(x.label)}</summary><div class="fold-body">${rich(x.text)}</div></details>`).join("");
+  } else {
+    body = m.sections.map((s, si) => {
+      const done = s.items.filter(x => x.done).length;
+      return `<div class="sec-h"><h3>${esc(s.title || "기획")}</h3><small>이행 ${done}/${s.items.length}</small></div>
+        ${s.sub ? `<p class="sec-sub">${esc(s.sub)}</p>` : ""}
+        <div class="list">${s.items.map((it, ii) => {
+          const f = it.story ? "story" : fmtOf(it.title);
+          return `<button type="button" class="entry" data-m="${mi}:${si}:${ii}"><span class="fmt ${f}">${FMT[f]}</span>
+            <span class="e-body"><span class="e-title">${esc(stripFmt(it.title.replace(/\n/g, " ")) || it.title)}</span>
+            ${(it.fields["기획 의도"] || it.fields["기획 의도 & 팔로워 예상 반응"]) ? `<span class="e-prev">${esc((it.fields["기획 의도"] || it.fields["기획 의도 & 팔로워 예상 반응"]).replace(/\n+/g, " "))}</span>` : ""}</span>
+            <span class="check${it.done ? " on" : ""}" aria-label="${it.done ? "이행 완료" : "미이행"}">${it.done ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>` : ""}</span></button>`;
+        }).join("")}</div>`;
+    }).join("");
+  }
+  return `<div class="hero" style="--c:var(--accent)"><span class="swatch"></span><h2>${esc(m.name)} 콘텐츠 캘린더</h2>
+      <div class="full">${m.kind === "grid" ? "날짜별 스토리 · 피드 기획" : "기획 콘텐츠 목록 · 체크는 시트의 이행 체크박스"}</div></div>
+    ${noteFolds(m.notes)}${body}`;
+}
+if (!DATA.months.length) {
+  document.querySelector('.nav [data-view="v-month"]').hidden = true;
+  document.querySelector(".nav").style.gridTemplateColumns = "repeat(2,1fr)";
+}
+const monthPager = makePager($("#month-tabs"), $("#month-pager"), DATA.months, m => esc(m.name), monthPage, "monthIdx");
+$("#month-pager").addEventListener("click", ev => {
+  const b = ev.target.closest(".entry[data-m]"); if (!b) return;
+  const [mi, a, c] = b.dataset.m.split(":");
+  const m = DATA.months[+mi];
+  if (m.kind === "grid") {
+    const d = m.days[+a];
+    const {topics, stories} = dayGroups(d);
+    const fields = c[0] === "s" ? [stories[+c.slice(1)]] : topics[+c.slice(1)];
+    const t = c[0] === "s" ? storyTitle(fields[0].text) : topicTitle(fields[0].text);
+    openSheet(`<span class="pill ghost">${esc(m.name)} ${parse(d.date).getDate()}일 ${DOW[parse(d.date).getDay()]}</span>${d.holiday ? `<span class="pill line">${esc(d.holiday)}</span>` : ""}`,
+      stripFmt(t) || t, fields.map(f => fieldHTML(f.label, f.text)).join("") + (c === "t0" ? gallery(d.images, "사진") : ""));
+  } else {
+    const it = m.sections[+a].items[+c];
+    const f = it.story ? "story" : fmtOf(it.title);
+    const meta = `<span class="pill ghost">${esc(m.name)} · ${esc(m.sections[+a].title)}</span><span class="pill line">${FMT[f]}</span>${it.done ? `<span class="pill" style="--c:var(--accent-soft)">이행 완료</span>` : ""}`;
+    openSheet(meta, stripFmt(it.title.replace(/\n/g, " ")) || it.title,
+      Object.entries(it.fields).map(([k, v]) => fieldHTML(k, v)).join("") + (it.reaction ? fieldHTML("기대 팔로워 반응", it.reaction) : "") + gallery(it.images, "사진"));
+  }
+});
+
+/* ---------------- views ---------------- */
+const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months"};
+function showView(id) {
+  document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== id);
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  store.set("view", id);
+  if (id === "v-prod") prodPager.go(prodPager.idx, false);
+  if (id === "v-month") monthPager.go(monthPager.idx, false);
+}
+document.querySelector(".nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.view); });
+
+renderCal();
+const upcoming = DATA.products.filter(p => p.period && p.period[1] >= TODAY).sort((a, b) => a.period[0] < b.period[0] ? -1 : 1)[0];
+const defaultProd = upcoming ? DATA.products.indexOf(upcoming) : 0;
+prodPager.init(+(store.get("prodIdx") ?? defaultProd) || 0);
+monthPager.init(+(store.get("monthIdx") ?? 0) || 0);
+const hashView = Object.entries(VIEWS).find(([, h]) => location.hash === "#" + h)?.[0];
+const wanted = hashView || store.get("view") || "v-cal";
+showView(wanted === "v-month" && !DATA.months.length ? "v-cal" : wanted);
+</script>

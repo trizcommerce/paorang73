@@ -1,0 +1,59 @@
+# 30분마다 구글 시트를 확인해서, 내용이 바뀌었으면 앱을 새로 만들어 GitHub Pages에 배포한다.
+# Actions 탭 → "시트 → 앱 자동 업데이트" → Run workflow 로 바로 실행할 수도 있다.
+name: 시트 → 앱 자동 업데이트
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install openpyxl pillow
+      - name: 시트 받아서 앱 만들기
+        run: |
+          python build_app.py
+          python pwa_build.py
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: 바뀐 내용이 있는지 확인
+        id: check
+        run: |
+          NEW=$(cat pwa/version.txt)
+          OLD=$(curl -fsSL "${{ steps.pages.outputs.base_url }}/version.txt" || echo none)
+          echo "지금 배포된 버전: $OLD / 새 버전: $NEW"
+          if [ "$NEW" = "$OLD" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "시트 변경 없음 — 배포 생략"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.check.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pwa
+      - if: steps.check.outputs.changed == 'true'
+        id: deploy
+        uses: actions/deploy-pages@v4

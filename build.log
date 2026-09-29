@@ -1,6 +1,0 @@
-C:\Users\jaeye\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\drawings.py:33: UserWarning: DrawingML support is incomplete and limited to charts and images only. Shapes and drawings will be lost.
-  warn("DrawingML support is incomplete and limited to charts and images only. Shapes and drawings will be lost.")
-images: 611
-built C:\Users\jaeye\Desktop\셀러 계정 관리\paorang73_calendar_app\duckduck_calendar.html
-events=0 products=33 months=0
-EXIT 0

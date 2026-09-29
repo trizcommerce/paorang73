@@ -59,7 +59,12 @@ def load_tabs(local):
     (한 번에 받기엔 너무 큰 시트용)"""
     TABS_DIR.mkdir(exist_ok=True)
     out, old = [], 0
+    by_prefix = CONFIG.get("tabs") == "year_prefix"
     for name, gid in sheet_media.list_tabs(SHEET_ID):
+        if by_prefix:  # "26.08_…" 처럼 이름에 연월이 붙은 탭 중 올해 것만 (연월 없는 탭은 옛 탭)
+            ym = TAB_YM_RE.match(name.strip("[] "))
+            if not ym or 2000 + int(ym[1]) < YEAR:
+                continue
         f = TABS_DIR / f"{gid}.xlsx"
         if not (local and f.exists()):
             fetch(f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx&gid={gid}", f)
@@ -68,7 +73,7 @@ def load_tabs(local):
         if find_header(ws):
             p = parse_product(ws, {})
             dates = [s["date"] for s in p["slots"] if s["date"]] + (p["period"] or [])
-            if dates and max(dates) < f"{YEAR}-01-01":
+            if dates and max(dates) < f"{YEAR}-01-01" and not by_prefix:
                 old += 1
                 if old >= 3:
                     break
@@ -238,6 +243,7 @@ FORMAT_RE = re.compile(r"(스토리|릴스|게시글|게시물|캐러셀|피드|
 
 
 WEEKDAYS = "월화수목금토일"
+TAB_YM_RE = re.compile(r"^\W*(\d{2})[._](\d{1,2})(?!\d)")  # 탭 이름 앞 "26.09", "★26.09", "26.08_" …
 WD_RE = re.compile(r"(\d{1,2})\s*(?:/|월)\s*(\d{1,2})\s*일?\s*\(?\s*([월화수목금토일])")
 
 
@@ -257,7 +263,7 @@ def _valid(y, mo, d):
 
 def dater(tab_name):
     """탭 이름이 'YY.MM…' 이면 그 연월에 가장 가까운 해로, 아니면 기본 연도로 (월, 일[, 요일]) → date"""
-    m = re.match(r"\s*(\d{2})\.(\d{1,2})(?!\d)", tab_name)
+    m = re.match(TAB_YM_RE, tab_name)
     weekday_mode = CONFIG.get("infer_year") == "weekday"
     if not m:
         def make(mo, d, wd=None):
@@ -374,7 +380,12 @@ def parse_product(ws, colors):
         return "" if (r, c) in skip else text(ws.cell(r, c).value)
 
     header_row, date_col = find_header(ws)
-    head = {c: val(header_row, c) for c in range(date_col, ws.max_column + 1) if val(header_row, c)}
+    head = {}
+    for c in range(date_col, ws.max_column + 1):
+        h = val(header_row, c)
+        if h:
+            n = sum(1 for x in head.values() if x == h or re.fullmatch(re.escape(h) + r" \d+", x))
+            head[c] = h if n == 0 else f"{h} {n + 1}"
     head.setdefault(date_col, "업로드 일자")  # 날짜 칸 제목이 비어 있으면 업로드 일자형으로
     upload_style = head[date_col] == "업로드 일자"
     date_of = dater(ws.title)
@@ -465,7 +476,13 @@ def parse_product(ws, colors):
             last_a = a
             m = DATE_RE.search(a)
             if upload_style:
-                fmt, title, notes = kind_topic(*(tops + ["", ""])[:2]) if len(topic_cols) == 2 else kind_topic("", b)
+                if len(topic_cols) == 2:
+                    fmt, title, notes = kind_topic(*(tops + ["", ""])[:2])
+                elif topic_cols and topic_cols[0] == kind_col:
+                    fmt, title, notes = kind_topic(b, "")
+                    title = "" if title == b.strip() and fmt != "기타" else title  # 형식 글자(캐러셀 등)는 제목으로 쓰지 않음
+                else:
+                    fmt, title, notes = kind_topic("", b)
             elif expose_style:
                 found = FORMAT_RE.search(b)
                 fmt, title, notes = (found[1] if found else "기타"), "", []
@@ -538,9 +555,14 @@ def parse_product(ws, colors):
         if not sl["title"] and sl["format"] not in ("스토리",) and upload_style:
             lines = [ln.strip() for it in sl["items"] for k, v in it.items() if k != "__images" and "기한" not in k
                      for ln in re.sub(r"⟪[^⟫]*⟫|⟦([^|⟧]*)\|[^⟧]*⟧", lambda x: x.group(1) or "", v).split("\n")]
+            named = next((m[2].strip() for ln in lines for m in [re.search(r"(타이틀|주제)\s*:\s*(.+)", ln)] if m), "")
+            caption = [ln.strip() for it in sl["items"] for k, v in it.items() if "캡션" in k or "피드글" in k
+                       for ln in plain_of(v).split("\n") if ln.strip() and not ln.strip().startswith("*")]
+            lines = ([named] if named else []) + caption[:1] + lines
             lines += [ln.strip() for it in sl["items"] for k, v in it.items() if "기한" in k
                       for ln in re.sub(r"⟪[^⟫]*⟫|⟦([^|⟧]*)\|[^⟧]*⟧", lambda x: x.group(1) or "", v).split("\n")]
             line = next((ln for ln in lines if ln and not ln.startswith("http") and not DATE_RE.fullmatch(ln)), "")
+            line = re.sub(r"^\d{1,2}[.)]\s*", "", line)  # "1. 효소 들고 있는 …" → 번호 떼기
             sl["title"] = line[:40] or ("참고 링크" if any(ln.startswith("http") for ln in lines) else "")
     if period is None:
         period = next((pp for pp in (parse_period(t, date_of) for t in top_lines) if pp), None)
@@ -566,7 +588,7 @@ def parse_product(ws, colors):
     round_m = re.search(r"(\d+)차", name)
     seller = CONFIG["seller"].removesuffix("님")
     display = re.sub(r"\s*\([\d.~\-\s]*\)\s*$", "", name)          # "헤베스템 13차 (929-104)" → "헤베스템 13차"
-    display = re.sub(r"^\d{2}\.\d{1,2}[\s_]*", "", display)          # "26.09 방탄커피" → "방탄커피"
+    display = re.sub(r"^\W*\d{2}[._]\d{1,2}[\s_]*", "", display)     # "26.09 방탄커피", "★26.09 효소" → 제품명
     display = re.sub(rf"^{re.escape(seller)}\s*[xX×]\s*", "", display)  # "방효선x헤어 2종" → "헤어 2종"
     return {
         "id": "p" + re.sub(r"\W", "", base) + (round_m[1] if round_m else ""),
@@ -786,9 +808,9 @@ def main():
     events, colors = parse_calendar(cal, {norm(ws.title) for ws in product_sheets}) if cal else ([], {})
     products = [parse_product(ws, colors) for ws in product_sheets]
     for p, ws in zip(products, product_sheets):  # 이름이 같은 제품(차수 표기 없음)은 탭의 연월로 구분
-        tab_ym = re.match(r"\s*(\d{2}\.\d{1,2})(?!\d)", ws.title)
+        tab_ym = TAB_YM_RE.match(ws.title)
         if not p["round"] and tab_ym and sum(q["name"] == p["name"] for q in products) > 1:
-            p["round"] = tab_ym[1]
+            p["round"] = f"{tab_ym[1]}.{int(tab_ym[2]):02d}"
     months = [parse_month(ws) for ws in month_sheets]
     for e in events:  # 범례 색이 없으면 "제품명 + N차" 가 적힌 칸을 그 제품으로
         if not e["product"]:

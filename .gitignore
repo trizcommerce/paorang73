@@ -6,3 +6,5 @@ media/
 tabs/
 duckduck_app.zip
 __pycache__/
+*.log
+insp.txt

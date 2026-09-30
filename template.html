@@ -180,7 +180,6 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .shots .inline-shot:only-child{width:min(100%,320px)}
 .inline-shot{display:block;width:min(100%,320px);margin:8px 0 14px;border-radius:12px;overflow:hidden;background:var(--surface-2);position:relative}
 .inline-shot img{width:100%;height:auto;display:block}
-.inline-shot .no{position:absolute;left:8px;top:8px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;padding:12px 0}
 .gallery .lb{grid-column:1/-1;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--accent)}
 .gallery button{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surface-2);max-width:100%}
@@ -620,7 +619,7 @@ function numberedStarts(text) { // 번호가 1, 2, 3 … 차례로 시작하는 
   return starts;
 }
 function shotHTML(src, all, i) {
-  return `<button type="button" class="inline-shot" data-view-imgs="${escRaw(all.join("|"))}" data-i="${i}" aria-label="사진 ${i + 1} 크게 보기"><img src="${escRaw(src)}" alt="" loading="lazy" decoding="async"><span class="no">${i + 1}</span></button>`;
+  return `<button type="button" class="inline-shot" data-view-imgs="${escRaw(all.join("|"))}" data-i="${i}" aria-label="사진 ${i + 1} 크게 보기"><img src="${escRaw(src)}" alt="" loading="lazy" decoding="async"></button>`;
 }
 function interleaved(label, text, imgs, place) { // 시트에서 사진이 놓인 높이의 번호 항목 뒤에 사진
   const lines = String(text).split("\n"), starts = numberedStarts(text);

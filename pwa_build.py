@@ -112,7 +112,10 @@ def main():
     (PWA / "calendar.ics").write_text(cal_feed.build_ics(data, CONFIG, cal_feed.site_url()), encoding="utf-8", newline="")
     # 시트 내용이 바뀌었는지 비교하는 용도 (업데이트 시각은 제외하고 해시)
     data.pop("updated", None)
-    digest = hashlib.sha256(json.dumps(data, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+    # 앱 코드가 바뀌어도 새로 배포되도록 화면·캘린더 코드도 함께 해시
+    code = "".join((HERE / f).read_text(encoding="utf-8") for f in ("template.html", "cal_feed.py", "pwa_build.py")
+                   if (HERE / f).exists())
+    digest = hashlib.sha256((json.dumps(data, ensure_ascii=False, sort_keys=True) + code).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")
     manifest = {
         "name": NAME, "short_name": SHORT, "lang": "ko",

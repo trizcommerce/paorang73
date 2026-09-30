@@ -8,6 +8,7 @@ template.html 에 넣어 모바일용 단일 HTML(duckduck_calendar.html)을 만
 """
 import datetime as dt
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -143,11 +144,128 @@ def notes_of(ws, r, cells, min_len=40):
     return [shown(ws, r, c, v) for c, v in cells if len(v) > min_len]
 
 
-def row_images(ws, r, cols=None):
-    """r 행에 걸린 이미지 (열 순서)"""
+def row_image_rows(ws, r, cols=None):
+    """r 행의 사진을 시트 배치대로: 위→아래 '사진 줄', 줄 안에서는 왼쪽→오른쪽. [(파일, 줄 번호)]"""
     cells = IMAGES.get(ws.title.strip(), {})
-    return [f"media/{n}" for c in sorted(c for (rr, c) in cells if rr == r and (cols is None or c in cols))
-            for n in cells[(r, c)]]
+    shots = [x for (rr, c), lst in cells.items() if rr == r and (cols is None or c in cols) for x in lst]
+    if not shots:
+        return []
+    shots.sort(key=lambda x: x[1])
+    bands, cur, top, hmin = [], [], None, None
+    for s in shots:  # 앞 줄의 사진 높이 절반 이상 아래에서 시작하면 새 줄
+        if cur and s[1] > top + 0.5 * hmin:
+            bands.append(cur)
+            cur, top, hmin = [], None, None
+        cur.append(s)
+        top = s[1] if top is None else top
+        hmin = s[2] if hmin is None else min(hmin, s[2])
+    bands.append(cur)
+    return [(f"media/{s[0]}", b) for b, band in enumerate(bands) for s in sorted(band, key=lambda x: (x[3], x[4]))]
+
+
+def row_shots(ws, r):
+    """r 행 사진: [(파일, (행 안 세로 위치 EMU, 사진 높이 EMU))] (시트 배치 순서)"""
+    cells = IMAGES.get(ws.title.strip(), {})
+    by_file = {}
+    for (rr, c), lst in cells.items():
+        if rr == r:
+            for s in lst:
+                by_file.setdefault(f"media/{s[0]}", (s[1], s[2]))
+    return [(f, by_file.get(f, (0, 0))) for f, _ in row_image_rows(ws, r)]
+
+
+NUM_RE = re.compile(r"^#?\s*(\d{1,2})\s*(?:[~\-]\s*\d{1,2}\s*)?[.)]")
+CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+
+
+def numbered_starts(text):
+    """번호가 1, 2, 3 … 차례로 시작하는 줄 번호 (화면 template 의 numberedStarts 와 같은 규칙)"""
+    starts, want = [], 1
+    for i, ln in enumerate(text.split("\n")):
+        t = re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", ln)).strip()
+        m = NUM_RE.match(t)
+        num = int(m[1]) if m else (CIRCLED.index(t[0]) + 1 if t and t[0] in CIRCLED else None)
+        if num == want:
+            starts.append(i)
+            want += 1
+    return starts
+
+
+PHOTO_ANCHOR = float(os.environ.get("PHOTO_ANCHOR", "0.5"))  # 사진 가운데 높이 옆의 항목에 붙임
+
+
+def est_layout(text, width_px, font_pt):
+    """글 줄마다 시작 높이(pt) 추정: 칸 너비로 자동 줄바꿈 (한글 ≈ 1em, 영문·숫자 ≈ 0.55em, 공백 ≈ 0.3em)"""
+    font_px, line_pt = font_pt * 4 / 3, font_pt * 1.2
+    usable = max(40, width_px - 8)
+    tops, y = [], 0.0
+    for ln in text.split("\n"):
+        tops.append(y)
+        w = sum(font_px * (0.3 if ch == " " else 0.55 if ord(ch) < 128 else 1.0) for ch in ln)
+        y += line_pt * max(1, -(-w // usable))
+    return tops, y
+
+
+def cell_width_px(ws, row, col):
+    """칸 화면 너비(px) — 시트 HTML 보기 기준, 가로 병합이면 합"""
+    merged = next((m for m in ws.merged_cells.ranges if m.min_row == row and m.min_col == col), None)
+    widths = sheet_media.WIDTHS.get(sheet_media.sheet_key(ws.title.strip()), {})
+    return sum(widths.get(c) or (ws.column_dimensions[openpyxl.utils.get_column_letter(c)].width or 12.63) * 7.5
+               for c in range(col, (merged.max_col if merged else col) + 1))
+
+
+def plain_cell(v):
+    return re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", str(v)))
+
+
+def place_photos(ws, item):
+    """사진이 시트에서 놓인 높이로, 옆 칸 번호 항목(#1, #2 …) 중 어디에 붙는지 계산.
+    결과: item["__field"] = 짝지을 칸, item["__place"] = 사진별 항목 번호(-1 = 첫 항목 앞)"""
+    imgs, pos, src = item.get("__images", []), item.pop("__pos", []), item.pop("__src", {})
+    item.pop("__bands", None)
+    if not imgs or len(pos) != len(imgs):
+        return
+    cands = [(k, v) for k, v in item.items() if not k.startswith("__") and isinstance(v, str) and k in src
+             and len(numbered_starts(v)) >= 2]
+    if not cands:
+        return
+    field, text = next(((k, v) for k, v in cands if re.search(r"비주얼|가이드|설명|구성|플로우", k)), cands[0])
+    row, col = src[field]
+    cell = ws.cell(row, col)
+    merged = next((m for m in ws.merged_cells.ranges if m.min_row == row and m.min_col == col), None)
+    width_px = cell_width_px(ws, row, col)
+    font_pt = float(cell.font.sz or 10)
+    tops, text_h = est_layout(plain_cell(text), width_px, font_pt)
+    heights = [ws.row_dimensions[r].height for r in range(row, (merged.max_row if merged else row) + 1)]
+    cell_h = sum(heights) if heights and all(heights) else None
+    last_row = max(r for r, _ in pos)
+    if cell_h is None or any(ws.row_dimensions[x].height is None for x in range(row, last_row + 1)):
+        return  # 행 높이가 자동이면 시트에 적힌 사진 위치를 믿을 수 없음 → 끝에 시트 순서대로
+    if not merged:  # 행 높이는 가장 긴 글 칸에 맞춰져 있으므로, 그 칸 추정 높이로 줄 간격을 보정
+        tallest = max((est_layout(plain_cell(ws.cell(row, c).value), cell_width_px(ws, row, c),
+                                  float(ws.cell(row, c).font.sz or 10))[1]
+                       for c in range(1, ws.max_column + 1) if isinstance(ws.cell(row, c).value, str)), default=0)
+        if tallest > 0:
+            scale = min(1.6, max(0.6, (cell_h - 4) / tallest))
+            tops, text_h = [t * scale for t in tops], text_h * scale
+    valign = (cell.alignment.vertical or "bottom") if cell_h and cell_h > text_h else "top"
+    offset = 0 if valign == "top" else (cell_h - text_h) / (2 if valign == "center" else 1)
+    starts = [offset + tops[i] for i in numbered_starts(text)]
+    place = []
+    for r, (off, h) in pos:
+        if r < row:
+            place.append(-1)
+            continue
+        above = sum((ws.row_dimensions[x].height or (text_h + offset if x == row else 15.75)) for x in range(row, r))
+        y_img = above + (off + PHOTO_ANCHOR * h) / 12700
+        k = max([i for i, s in enumerate(starts) if s <= y_img], default=-1)
+        place.append(k)
+    item["__field"], item["__place"] = field, place
+
+
+def row_images(ws, r, cols=None):
+    """r 행에 걸린 이미지 (시트 배치 순서)"""
+    return [f for f, _ in row_image_rows(ws, r, cols)]
 
 
 def top_left_only(ws):
@@ -454,18 +572,20 @@ def parse_product(ws, colors):
         return bool(v) and merge_top.get((r, c), r) == r
 
     info_images = [i for r in range(1, header_row) for i in row_images(ws, r)]
-    pending = row_images(ws, header_row)  # 헤더 줄에 걸쳐 놓인 이미지는 첫 행 것
+    pending = [(f, header_row, (0, h)) for f, (_, h) in row_shots(ws, header_row)]  # 헤더 줄에 걸친 이미지는 첫 행 것
     slots, cur, last_a = [], None, ""
     for r in range(header_row + 1, ws.max_row + 1):
         a = cell_text(r, date_col)
         tops = [cell_text(r, c) for c in topic_cols]
         b = "\n\n".join(t for t in tops if t)
-        fields = {}
+        fields, srcs = {}, {}
         for c, h in headers.items():
             v = val(r, c)
             if v and v != "-":
                 fields[h] = shown(ws, r, c, v)
-        imgs = pending + row_images(ws, r)
+                srcs[h] = (r, c)
+        shots = [(f, r, off) for f, off in row_shots(ws, r)]
+        imgs = pending + shots
         pending = []
         if not (a or b or fields or imgs):
             continue
@@ -503,15 +623,18 @@ def parse_product(ws, colors):
             slots.append(cur)
         if fields:
             if cur["format"].startswith("스토리") or not cur["items"]:
-                cur["items"].append(fields)
+                cur["items"].append({**fields, "__src": srcs})
             else:
                 last = cur["items"][-1]
                 for k, v in fields.items():
                     last[k] = (last[k] + "\n\n" + v) if k in last else v
+                    last.setdefault("__src", {}).setdefault(k, srcs[k])
         if imgs:
             if not cur["items"]:
                 cur["items"].append({})
-            cur["items"][-1].setdefault("__images", []).extend(imgs)
+            it = cur["items"][-1]
+            it.setdefault("__images", []).extend(f for f, _, _ in imgs)
+            it.setdefault("__pos", []).extend((rr, off) for _, rr, off in imgs)
 
     def plain_of(v):
         return re.sub(r"⟪[^⟫]*⟫|⟦([^|⟧]*)\|[^⟧]*⟧", lambda x: x.group(1) or "", v)
@@ -534,7 +657,7 @@ def parse_product(ws, colors):
     for sl in slots:
         if not upload_style:
             break
-        fields = [(k, plain_of(v).strip()) for it in sl["items"] for k, v in it.items() if k != "__images"]
+        fields = [(k, plain_of(v).strip()) for it in sl["items"] for k, v in it.items() if not k.startswith("__")]
         if sl["format"] == "기타":  # 형식 칸이 없으면 내용 앞 표시로 (★피드, [스토리] …)
             head = next((v for k, v in fields if "가이드" in k or "내용" in k), "")
             if re.match(r"[★\[]\s*스토리", head) or sl["title"] in ("[스토리]", "스토리"):
@@ -553,7 +676,7 @@ def parse_product(ws, colors):
                 sl["title"] = line[:40]
     for sl in slots:  # 제목이 비어 있으면 내용 첫 줄로 (예: "✨방학!!!!✨"), 주소·날짜 칸은 제외
         if not sl["title"] and sl["format"] not in ("스토리",) and upload_style:
-            lines = [ln.strip() for it in sl["items"] for k, v in it.items() if k != "__images" and "기한" not in k
+            lines = [ln.strip() for it in sl["items"] for k, v in it.items() if not k.startswith("__") and "기한" not in k
                      for ln in re.sub(r"⟪[^⟫]*⟫|⟦([^|⟧]*)\|[^⟧]*⟧", lambda x: x.group(1) or "", v).split("\n")]
             named = next((m[2].strip() for ln in lines for m in [re.search(r"(타이틀|주제)\s*:\s*(.+)", ln)] if m), "")
             caption = [ln.strip() for it in sl["items"] for k, v in it.items() if "캡션" in k or "피드글" in k
@@ -580,6 +703,11 @@ def parse_product(ws, colors):
             after = [sl["date"] for sl in slots if (sl["label"].startswith("D+") or sl["label"] == "마감") and sl["date"]]
             period = [opens[0], max(after + opens)]
 
+    for sl in slots:
+        for it in sl["items"]:
+            place_photos(ws, it)
+            it.pop("__src", None)
+            it.pop("__pos", None)
     name = ws.title.strip()
     base = norm(name)
     color = next((c for n, c in colors.items() if norm(n) == base), None)

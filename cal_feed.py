@@ -74,7 +74,7 @@ def build_ics(data, config, url=""):
             kind = fmt_of(s.get("format", ""))
             title = plain(s.get("title", ""))
             if not title:
-                first = next((v for it in s.get("items", []) for k, v in it.items() if k != "__images"), "")
+                first = next((v for it in s.get("items", []) for k, v in it.items() if not k.startswith("__")), "")
                 title = plain(first).split("\n")[0][:40]
             head = f"[{pname}{' ' + s['label'] if s.get('label') else ''}]"
             if kind and (kind in title or norm(kind) in norm(title)):  # "자유 · 자유일상" 같은 반복 방지

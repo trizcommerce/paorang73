@@ -75,6 +75,7 @@ class _SheetView(HTMLParser):
         self.cells, self.row, self.col = {}, None, 0
         self.busy = {}  # 위에서 rowspan 으로 내려온 칸: row → set(화면상 칸 번호)
         self.colmap = []  # 화면상 칸 번호 → 실제 열 번호 (숨긴 열이 있으면 건너뜀)
+        self.widths = {}
         self.in_td = False
         self.cell = None
         self.anchor = None
@@ -96,6 +97,9 @@ class _SheetView(HTMLParser):
         a = dict(attrs)
         if tag == "th" and re.fullmatch(r"\d+C\d+", a.get("id") or ""):  # 머리줄: 실제 열 번호
             self.colmap.append(int(a["id"].rsplit("C", 1)[-1]) + 1)
+            w = re.search(r"width:\s*(\d+)px", a.get("style") or "")
+            if w:
+                self.widths[self.colmap[-1]] = int(w[1])
         elif tag == "th" and re.fullmatch(r"\d+R\d+", a.get("id") or ""):
             self.row = int(a["id"].rsplit("R", 1)[-1]) + 1
             self.col = 0
@@ -167,6 +171,7 @@ def fetch_links(sheet_id):
         t = _SheetView(css)
         t.feed(page)
         out[sheet_key(raw_name)] = t.cells
+        WIDTHS[sheet_key(raw_name)] = t.widths
     return out
 
 
@@ -178,6 +183,7 @@ def fetch_links(sheet_id):
 FMT_OPEN, FMT_CLOSE_TAG = "⟪", "⟪/⟫"
 PLAIN_COLORS = {"000000", "1F1F1F"}  # 기본 검정은 앱 기본 글자색으로
 THEME = []  # 워크북 테마 색 (collect_formats 에서 채움)
+WIDTHS = {}  # 탭 키 → {열 번호: 화면 너비 px} (시트 HTML 보기 머리줄)
 STATS = {"view": 0, "xlsx_mismatch": 0, "xlsx_only": 0, "examples": []}  # 서식 출처 집계 (빌드 로그용)
 
 
@@ -453,6 +459,9 @@ def extract_images(xlsx_path, out_dir, only=None):
             d_path = s_rels[dr.get(f"{{{NS['r']}}}id")]
             d_rels = _rels(z, d_path)
             anchors = []
+            sheet_xml = z.read(path).decode("utf-8", "replace")
+            default_ht = float((re.search(r'defaultRowHeight="([\d.]+)"', sheet_xml) or [0, 15.75])[1])
+            heights = {int(r): float(h) for r, h in re.findall(r'<row r="(\d+)"[^>]*\sht="([\d.]+)"', sheet_xml)}
             for anc in ET.fromstring(z.read(d_path)):
                 fr, blip = anc.find("xdr:from", NS), anc.find(".//a:blip", NS)
                 if fr is None or blip is None:
@@ -463,15 +472,27 @@ def extract_images(xlsx_path, out_dir, only=None):
                 row = int(fr.find("xdr:row", NS).text) + 1
                 col = int(fr.find("xdr:col", NS).text) + 1
                 off = int(fr.find("xdr:rowOff", NS).text or 0)
-                anchors.append((row, col, off, media))
-            for row, col, off, media in sorted(anchors):  # 같은 칸 안에서는 위에서 아래 순서
+                col_off = int(fr.find("xdr:colOff", NS).text or 0)
+                ext = anc.find("xdr:ext", NS)
+                to = anc.find("xdr:to", NS)
+                height = int(ext.get("cy")) if ext is not None else 0
+                if not height and to is not None:
+                    height = max(0, int(to.find("xdr:rowOff", NS).text or 0) - off)
+                # 구글은 행 맨 위에 놓인 사진을 '윗행의 맨 아래'(위치 = 윗행 높이)로 적어 내보냄 → 실제 행으로
+                for _ in range(3):
+                    h = heights.get(row)
+                    if h is None or abs(off - h * 12700) > 12700:  # 1pt 오차까지
+                        break
+                    off, row = 0, row + 1
+                anchors.append((row, col, off, col_off, height or 1, media))
+            for row, col, off, col_off, height, media in sorted(anchors, key=lambda a: (a[0], a[1], a[3])):
                 if media not in saved:
                     try:
                         saved[media] = _save_small(z.read(media), out_dir)
                     except Exception as e:  # 깨진 이미지는 건너뜀
                         print("skip image", media, e)
                         saved[media] = None
-                if saved[media]:
-                    cells.setdefault((row, col), []).append(saved[media])
+                if saved[media]:  # (파일, 세로 위치, 높이, 열, 가로 위치)
+                    cells.setdefault((row, col), []).append((saved[media], off, height, col, col_off))
         result[s.get("name").strip().strip("[]").strip()] = cells
     return result

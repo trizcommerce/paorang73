@@ -288,7 +288,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
   <div class="spell" id="spell">
     <div class="spell-head"><b>맞춤법</b>
       <button type="button" class="cap-btn" id="spell-run">검사하기</button>
-      <a class="cap-btn spell-naver" id="spell-naver" href="https://search.naver.com/search.naver?query=%EB%A7%9E%EC%B6%A4%EB%B2%95%EA%B2%80%EC%82%AC%EA%B8%B0" target="_blank" rel="noopener">네이버 검사기로 더 검사</a></div>
+      <button type="button" class="cap-btn" id="spell-naver">네이버 검사기로 더 검사</button></div>
     <div id="spell-result" class="spell-result"></div>
   </div>
   <div class="foot-bar"><span class="count" id="editor-count"></span>
@@ -748,10 +748,51 @@ function applySpell(list) {
   runSpell();
 }
 $("#spell-run").onclick = runSpell;
-$("#spell-naver").addEventListener("click", () => { copyText($("#editor-text").value); toast("캡션을 복사했어요. 네이버 검사기에 붙여넣어 주세요"); });
+/* 네이버 맞춤법 검사기는 한 번에 300자 → 줄·문장 단위로 300자 이내 조각으로 나눠 하나씩 복사 */
+const NAVER_LIMIT = 295;  // 줄바꿈 계산 차이를 감안해 조금 여유
+const NAVER_URL = "https://search.naver.com/search.naver?query=%EB%A7%9E%EC%B6%A4%EB%B2%95%EA%B2%80%EC%82%AC%EA%B8%B0";
+function splitLong(line) { // 한 줄이 너무 길면 문장 끝 → 띄어쓰기 → 글자 수 순으로 나눔
+  const out = [];
+  let rest = line;
+  while ([...rest].length > NAVER_LIMIT) {
+    const head = [...rest].slice(0, NAVER_LIMIT).join("");
+    let cut = Math.max(...[...head.matchAll(/[.!?~요다](?=\s)/g)].map(m => m.index + 1), -1);
+    if (cut < NAVER_LIMIT * 0.4) cut = head.lastIndexOf(" ");
+    if (cut < NAVER_LIMIT * 0.4) cut = head.length;
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+function naverChunks(text) {
+  const pieces = text.split("\n").flatMap(l => [...l].length > NAVER_LIMIT ? splitLong(l) : [l]);
+  const chunks = [];
+  let cur = "";
+  pieces.forEach(p => {
+    const next = cur ? cur + "\n" + p : p;
+    if ([...next].length > NAVER_LIMIT && cur.trim()) { chunks.push(cur.trim()); cur = p; }
+    else cur = next;
+  });
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+$("#spell-naver").addEventListener("click", () => {
+  const chunks = naverChunks($("#editor-text").value), box = $("#spell-result");
+  box._chunks = chunks;
+  box.innerHTML = `<div class="spell-ok">네이버 검사기는 한 번에 300자까지라 <b>${chunks.length}조각</b>으로 나눴어요. 검사기를 열어두고 조각을 하나씩 복사해 붙여넣으세요.</div>` +
+    `<a class="cta alt" style="margin:8px 0 4px" href="${NAVER_URL}" target="_blank" rel="noopener">네이버 맞춤법 검사기 열기</a>` +
+    chunks.map((c, i) => `<div class="spell-item"><span class="w">${escRaw([...c].slice(0, 42).join("").replace(/\n/g, " "))}…<small>${[...c].length}자</small></span>` +
+      `<button type="button" class="cap-btn" data-chunk="${i}">${i + 1}/${chunks.length} 복사</button></div>`).join("");
+});
 $("#spell-result").addEventListener("click", ev => {
   const box = $("#spell-result"), fx = ev.target.closest("[data-spell-fix]");
   if (fx) applySpell([box._found[+fx.dataset.spellFix]]);
+  const ch = ev.target.closest("[data-chunk]");
+  if (ch) {
+    copyText(box._chunks[+ch.dataset.chunk]);
+    ch.textContent = `✓ ${+ch.dataset.chunk + 1}/${box._chunks.length} 복사함`;
+  }
   if (ev.target.closest("[data-spell-all]")) { const n = box._found.length; applySpell(box._found); toast(`${n}곳을 고쳤어요`); }
 });
 function closeEditor() {

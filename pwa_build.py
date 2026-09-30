@@ -12,6 +12,8 @@ import re
 import shutil
 from pathlib import Path
 
+import cal_feed
+
 HERE = Path(__file__).parent
 SRC = HERE / "duckduck_calendar.html"
 DATA = HERE / "data.json"
@@ -105,8 +107,10 @@ def main():
             shutil.copy(saved, PWA / saved.name)
         else:
             icon(n, PWA / f"icon-{n}.png")
-    # 시트 내용이 바뀌었는지 비교하는 용도 (업데이트 시각은 제외하고 해시)
     data = json.loads(DATA.read_text(encoding="utf-8"))
+    # 휴대폰 캘린더 구독용 파일 (당일 오전 9시 알림)
+    (PWA / "calendar.ics").write_text(cal_feed.build_ics(data, CONFIG, cal_feed.site_url()), encoding="utf-8", newline="")
+    # 시트 내용이 바뀌었는지 비교하는 용도 (업데이트 시각은 제외하고 해시)
     data.pop("updated", None)
     digest = hashlib.sha256(json.dumps(data, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")

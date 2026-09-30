@@ -169,6 +169,11 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .cut{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
 .cut .lb{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
 .foot{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+.cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:15px;text-decoration:none;margin-top:10px}
+.cta.alt{background:var(--surface-2);color:var(--ink)}
+.steps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.75}
+.steps li{margin:2px 0}
+.url-box{display:block;width:100%;margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:12.5px;overflow-wrap:anywhere;color:var(--muted);font-variant-numeric:tabular-nums}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;padding:12px 0}
 .gallery .lb{grid-column:1/-1;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--accent)}
 .gallery button{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surface-2);max-width:100%}
@@ -204,6 +209,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
         <div class="h-title" id="cal-title">9월</div>
       </div>
       <div class="cal-head">
+        <button class="icon-btn" id="btn-alarm" type="button" aria-label="휴대폰 캘린더로 알림 받기"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg></button>
         <button class="today-btn" id="btn-today" type="button">오늘</button>
         <button class="icon-btn" id="btn-prev" type="button" aria-label="이전 달"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
         <button class="icon-btn" id="btn-next" type="button" aria-label="다음 달"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -538,6 +544,34 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet()
     el.addEventListener("touchend", e => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; });
   });
 })();
+
+/* ---------------- 휴대폰 캘린더 구독 (알림) ---------------- */
+function openAlarmSheet() {
+  const ics = new URL("calendar.ics", location.href).href;
+  const webcal = ics.replace(/^https?:/, "webcal:");
+  const google = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal);
+  const body = `
+    <div class="field"><div class="tx">업로드 일정이 휴대폰 캘린더에 들어가고, <b>업로드 당일 오전 9시</b>에 알림이 와요. 시트가 바뀌면 캘린더도 자동으로 바뀝니다.</div>
+      <a class="cta" href="${escRaw(webcal)}">아이폰 캘린더에 추가</a>
+      <a class="cta alt" href="${escRaw(google)}" target="_blank" rel="noopener">구글 캘린더에 추가</a></div>
+    <div class="field"><div class="lb">아이폰</div><ol class="steps">
+      <li>위 <b>아이폰 캘린더에 추가</b> → <b>구독</b> → <b>추가</b></li>
+      <li>알림이 안 오면: <b>설정 → 캘린더 → 계정 → 구독 캘린더</b>에서 이 캘린더의 <b>'알림 제거'를 끄기</b></li>
+      <li>같은 화면의 <b>새로 고침</b>을 '매시간'으로 두면 시트 변경이 빨리 반영돼요</li></ol></div>
+    <div class="field"><div class="lb">안드로이드 · 구글 캘린더</div><ol class="steps">
+      <li>위 <b>구글 캘린더에 추가</b> → 구글 계정으로 <b>추가</b></li>
+      <li>구글 캘린더는 구독 일정에 알림을 따로 설정해야 해요: 캘린더 설정에서 이 캘린더의 <b>기본 알림</b>을 '당일 오전 9시'로</li>
+      <li>구글 캘린더는 시트 변경이 반영되기까지 몇 시간 ~ 하루 걸릴 수 있어요</li></ol></div>
+    <div class="field"><div class="lb">직접 추가할 때 쓰는 주소</div>
+      <span class="url-box" id="ics-url">${escRaw(ics)}</span>
+      <button type="button" class="cta alt" id="copy-ics">주소 복사</button></div>`;
+  openSheet(`<span class="pill ghost">알림 받기</span>`, "휴대폰 캘린더로 알림 받기", body);
+  $("#copy-ics").onclick = async () => {
+    try { await navigator.clipboard.writeText(ics); $("#copy-ics").textContent = "복사했어요"; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($("#ics-url")); getSelection().removeAllRanges(); getSelection().addRange(r); $("#copy-ics").textContent = "주소를 길게 눌러 복사하세요"; }
+  };
+}
+$("#btn-alarm").onclick = openAlarmSheet;
 
 /* ---------------- 사진 크게 보기 ---------------- */
 let viewerBack = null;

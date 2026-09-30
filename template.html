@@ -210,6 +210,18 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .editor .count{flex:1;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .editor .count.over{color:var(--sun);font-weight:600}
 .editor .cta{width:auto;margin:0;padding:0 18px;min-height:44px}
+.spell{margin:0 16px 8px;max-height:34vh;overflow-y:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:10px 12px}
+.spell-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spell-head b{flex:1;font-size:14px}
+.spell-naver{display:inline-flex;align-items:center;text-decoration:none}
+.spell-result{font-size:13.5px;line-height:1.6}
+.spell-result:not(:empty){margin-top:8px}
+.spell-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.spell-item .w{flex:1;min-width:0}
+.spell-item del{color:var(--sun);text-decoration:line-through}
+.spell-item ins{color:var(--accent);text-decoration:none;font-weight:600}
+.spell-item small{display:block;color:var(--muted);font-size:12px}
+.spell-ok{color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .viewer{position:fixed;inset:0;z-index:60;background:rgba(8,10,8,.94);display:flex;flex-direction:column}
@@ -272,7 +284,13 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
     <button type="button" class="icon-btn" id="editor-close" aria-label="닫기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="hint" id="editor-hint">내 말투에 맞게 고친 뒤 복사해서 인스타에 붙여넣으세요. 고친 내용은 이 휴대폰에 저장돼요.</div>
   <label for="editor-text" class="hint" style="padding-top:0;position:absolute;left:-9999px">캡션 내용</label>
-  <textarea id="editor-text" spellcheck="false"></textarea>
+  <textarea id="editor-text" spellcheck="true" lang="ko"></textarea>
+  <div class="spell" id="spell">
+    <div class="spell-head"><b>맞춤법</b>
+      <button type="button" class="cap-btn" id="spell-run">검사하기</button>
+      <a class="cap-btn spell-naver" id="spell-naver" href="https://search.naver.com/search.naver?query=%EB%A7%9E%EC%B6%A4%EB%B2%95%EA%B2%80%EC%82%AC%EA%B8%B0" target="_blank" rel="noopener">네이버 검사기로 더 검사</a></div>
+    <div id="spell-result" class="spell-result"></div>
+  </div>
   <div class="foot-bar"><span class="count" id="editor-count"></span>
     <button type="button" class="cta alt" id="editor-reset">원래대로</button>
     <button type="button" class="cta" id="editor-copy">복사</button></div>
@@ -561,7 +579,8 @@ function captionTools(label, text) {
   const i = CAPTIONS.push({ label, text: plain(text).trim() }) - 1;
   const edited = draftOf(CAPTIONS[i]) !== null;
   return `<div class="cap-tools"><button type="button" class="cap-btn" data-cap-copy="${i}">복사</button>` +
-    `<button type="button" class="cap-btn" data-cap-edit="${i}">${edited ? "수정한 캡션 보기" : "수정하기"}</button></div>`;
+    `<button type="button" class="cap-btn" data-cap-edit="${i}">${edited ? "수정한 캡션 보기" : "수정하기"}</button>` +
+    `<button type="button" class="cap-btn" data-cap-check="${i}">맞춤법 검사</button></div>`;
 }
 const fieldHTML = (label, text) => `<div class="field"><div class="lb">${esc(label)}</div><div class="tx">${rich(text)}</div>${isCaption(label, text) ? captionTools(label, text) : ""}</div>`;
 function openSheet(meta, title, body) {
@@ -669,13 +688,72 @@ const updateCount = () => {
   const n = [...$("#editor-text").value].length, c = $("#editor-count");
   c.textContent = `${n.toLocaleString()} / 2,200자`; c.classList.toggle("over", n > 2200);
 };
-function openEditor(cap) {
+function openEditor(cap, check = false) {
   editing = cap; editorBack = document.activeElement;
   $("#editor-title").textContent = `${cap.label.replace(/\s*\n.*/s, "")} 수정`;
   $("#editor-text").value = draftOf(cap) ?? cap.text;
+  $("#spell-result").innerHTML = "";
   $("#editor").hidden = false; updateCount();
-  $("#editor-text").focus({ preventScroll: true });
+  if (check) runSpell(); else $("#editor-text").focus({ preventScroll: true });
 }
+
+/* ---------------- 맞춤법 검사 (자주 틀리는 표현) ---------------- */
+// [찾을 표현, 고칠 말, 이유]  — 셀러 말투(ㅋㅋ, 다욧트 등)는 건드리지 않도록 확실히 틀린 표기만
+const SPELL_RULES = [
+  [/되요/g, "돼요", "‘되어요’의 준말은 ‘돼요’"], [/되서/g, "돼서", "‘되어서’의 준말은 ‘돼서’"],
+  [/됬/g, "됐", "‘되었-’의 준말은 ‘됐-’"], [/몇\s?일/g, "며칠", "‘며칠’이 맞는 표기"],
+  [/오랫만/g, "오랜만", "‘오래간만’의 준말"], [/금새/g, "금세", "‘금시에’의 준말"],
+  [/설겆이/g, "설거지"], [/희안하/g, "희한하"], [/역활/g, "역할"], [/일일히/g, "일일이"],
+  [/깨끗히/g, "깨끗이"], [/곰곰히/g, "곰곰이"], [/틈틈히/g, "틈틈이"], [/번번히/g, "번번이"],
+  [/어의\s?없/g, "어이없"], [/어떻해/g, "어떡해", "‘어떻게 해’의 준말은 ‘어떡해’"], [/뵈요/g, "봬요", "‘뵈어요’의 준말"],
+  [/웬지/g, "왠지", "‘왜인지’의 준말"], [/왠만/g, "웬만"], [/왠일/g, "웬일"],
+  [/구지(?=[\s.!?,~]|$)/g, "굳이"], [/가르키/g, "가리키"], [/제작년/g, "재작년"], [/설레임/g, "설렘"],
+  [/내노라/g, "내로라"], [/연애인/g, "연예인"], [/댓가/g, "대가"], [/촛점/g, "초점"], [/문안하/g, "무난하"],
+  [/결재(?=하|해|했|창|수단|금액|가|를|는|\s)/g, "결제", "돈을 치르는 뜻이면 ‘결제’"],
+  [/던지\s?말던지/g, "든지 말든지", "고르는 뜻이면 ‘-든지’"], [/않\s?돼/g, "안 돼"], [/않\s?되/g, "안 되"],
+  [/할려고/g, "하려고"], [/갈려고/g, "가려고"], [/볼려고/g, "보려고"], [/줄려고/g, "주려고"],
+  [/할려면/g, "하려면"], [/갈려면/g, "가려면"], [/어짜피/g, "어차피"], [/뒤쳐지/g, "뒤처지"],
+  [/쉽상/g, "십상"], [/베게(?=[\s.!?,]|$|를|가|는|도|에)/g, "베개"], [/육계장/g, "육개장"], [/떡볶기/g, "떡볶이"],
+  [/안성마춤/g, "안성맞춤"], [/일부로/g, "일부러"], [/알맞는/g, "알맞은"], [/걸맞는/g, "걸맞은"],
+  [/예기(?=를|가|했|해|하|야)/g, "얘기"], [/궁시렁/g, "구시렁"], [/짜집기/g, "짜깁기"], [/곱배기/g, "곱빼기"],
+  [/닥달/g, "닦달"], [/바램(?=이|을|은|입|이에|[\s.!]|$)/g, "바람", "‘바라다’의 명사형은 ‘바람’"],
+];
+function spellFindings(text) {
+  const out = [];
+  SPELL_RULES.forEach(([re, fix, why]) => {
+    for (const m of text.matchAll(re)) out.push({ at: m.index, len: m[0].length, from: m[0], to: fix, why });
+  });
+  for (const m of text.matchAll(/([가-힣])께(?=요|[\s.!?~,)]|$)/g)) { // 할께·갈께요 → 할게·갈게요 (ㄹ 받침 뒤 '께')
+    const code = m[1].charCodeAt(0) - 0xAC00;  // '분들께'처럼 높임 조사 '께'는 제외
+    if (code >= 0 && code % 28 === 8 && m[1] !== "들") out.push({ at: m.index + 1, len: 1, from: m[0], to: m[1] + "게", why: "‘-ㄹ게’로 적어요", swap: "게" });
+  }
+  out.sort((a, b) => a.at - b.at);
+  return out.filter((f, i) => !out.slice(0, i).some(g => f.at < g.at + g.len));  // 겹치는 것 빼기
+}
+function runSpell() {
+  const text = $("#editor-text").value, found = spellFindings(text), box = $("#spell-result");
+  if (!found.length) { box.innerHTML = `<div class="spell-ok">자주 틀리는 맞춤법은 없어요. 띄어쓰기까지 꼼꼼히 보려면 ‘네이버 검사기로 더 검사’를 눌러 주세요.</div>`; return; }
+  box.innerHTML = `<div class="spell-head" style="margin-bottom:4px"><span style="flex:1">${found.length}곳을 찾았어요</span>` +
+    `<button type="button" class="cap-btn" data-spell-all>모두 고치기</button></div>` +
+    found.map((f, i) => `<div class="spell-item"><span class="w"><del>${escRaw(f.from)}</del> → <ins>${escRaw(f.swap ? f.to : f.to)}</ins>` +
+      `${f.why ? `<small>${escRaw(f.why)}</small>` : ""}</span><button type="button" class="cap-btn" data-spell-fix="${i}">고치기</button></div>`).join("");
+  box._found = found;
+}
+function applySpell(list) {
+  const ta = $("#editor-text");
+  let v = ta.value;
+  [...list].sort((a, b) => b.at - a.at).forEach(f => { v = v.slice(0, f.at) + (f.swap || f.to) + v.slice(f.at + f.len); });
+  ta.value = v;
+  ta.dispatchEvent(new Event("input"));
+  runSpell();
+}
+$("#spell-run").onclick = runSpell;
+$("#spell-naver").addEventListener("click", () => { copyText($("#editor-text").value); toast("캡션을 복사했어요. 네이버 검사기에 붙여넣어 주세요"); });
+$("#spell-result").addEventListener("click", ev => {
+  const box = $("#spell-result"), fx = ev.target.closest("[data-spell-fix]");
+  if (fx) applySpell([box._found[+fx.dataset.spellFix]]);
+  if (ev.target.closest("[data-spell-all]")) { const n = box._found.length; applySpell(box._found); toast(`${n}곳을 고쳤어요`); }
+});
 function closeEditor() {
   if ($("#editor").hidden) return false;
   $("#editor").hidden = true; editing = null;
@@ -698,9 +776,10 @@ $("#editor-reset").onclick = () => {
   updateCount(); toast("시트 원문으로 되돌렸어요");
 };
 document.addEventListener("click", ev => {
-  const c = ev.target.closest("[data-cap-copy]"), e = ev.target.closest("[data-cap-edit]");
+  const c = ev.target.closest("[data-cap-copy]"), e = ev.target.closest("[data-cap-edit]"), k = ev.target.closest("[data-cap-check]");
   if (c) { const cap = CAPTIONS[+c.dataset.capCopy]; copyText(draftOf(cap) ?? cap.text); }
   if (e) openEditor(CAPTIONS[+e.dataset.capEdit]);
+  if (k) openEditor(CAPTIONS[+k.dataset.capCheck], true);
 });
 document.addEventListener("keydown", ev => { if (ev.key === "Escape" && closeEditor()) ev.stopImmediatePropagation(); }, true);
 

@@ -641,6 +641,17 @@ function pickNumberedField(it) {
   return ok ? it.__field : null;
 }
 
+/* 참고 사진은 제작 가이드 칸 바로 아래에 (가이드 칸이 없으면 맨 끝) */
+const GUIDE_RANK = [/비주얼\s*(가이드|설명)/, /가이드/, /흐름|시놉시스|플로우|구성/, /비주얼/, /내용/];
+function guideKey(keys) {
+  for (const re of GUIDE_RANK) { const k = keys.find(x => re.test(x)); if (k) return k; }
+  return null;
+}
+function fieldsWithPhotos(pairs, imgs, label, render = fieldHTML) {
+  const g = imgs && imgs.length ? guideKey(pairs.map(p => p[0])) : null;
+  return pairs.map(([k, v]) => render(k, v) + (k === g ? gallery(imgs, label) : "")).join("") + (g ? "" : gallery(imgs, label));
+}
+
 function slotBody(p, s) {
   let h = "";
   if (s.notes.length) h += fieldHTML("메모", s.notes.join("\n"));
@@ -648,8 +659,10 @@ function slotBody(p, s) {
   s.items.forEach((it, i) => {
     const imgs = it.__images || [];
     const target = pickNumberedField(it);
-    const inner = Object.entries(it).filter(([k]) => !k.startsWith("__")).map(([k, v]) =>
-      k === target ? interleaved(k, v, imgs, it.__place) : fieldHTML(k, v)).join("") + (target ? "" : gallery(imgs, "비주얼 예시"));
+    const pairs = Object.entries(it).filter(([k]) => !k.startsWith("__"));
+    const inner = target
+      ? pairs.map(([k, v]) => k === target ? interleaved(k, v, imgs, it.__place) : fieldHTML(k, v)).join("")
+      : fieldsWithPhotos(pairs, imgs, "비주얼 예시");
     h += many ? `<div class="cut"><div class="lb">컷 ${i + 1}</div>${inner}</div>` : inner;
   });
   return h || `<div class="empty">상세 내용이 없어요.</div>`;
@@ -664,7 +677,7 @@ function openEntry(e) {
   if (e.src === "month") {
     const m = DATA.months.find(x => x.id === e.mid);
     const meta = `<span class="pill ghost">${esc(m.name)} 월간 기획</span><span class="pill line">${FMT[e.fmt]}</span>${e.day.holiday ? `<span class="pill line">${esc(e.day.holiday)}</span>` : ""}`;
-    return openSheet(meta, e.title, e.fields.map(f => fieldHTML(f.label, f.text)).join("") + gallery(e.images, "사진"));
+    return openSheet(meta, e.title, fieldsWithPhotos(e.fields.map(f => [f.label, f.text]), e.images, "사진"));
   }
   const p = e.pid ? P[e.pid] : null;
   const meta = (p ? `<span class="pill" style="--c:${p.color}">${esc(pname(p.id))}</span>` : "") + `<span class="pill ghost">${mdDow(e.ev.date || sel)}</span>`;
@@ -807,13 +820,13 @@ $("#month-pager").addEventListener("click", ev => {
     const fields = c[0] === "s" ? [stories[+c.slice(1)]] : topics[+c.slice(1)];
     const t = c[0] === "s" ? storyTitle(fields[0].text) : topicTitle(fields[0].text);
     openSheet(`<span class="pill ghost">${esc(m.name)} ${parse(d.date).getDate()}일 ${DOW[parse(d.date).getDay()]}</span>${d.holiday ? `<span class="pill line">${esc(d.holiday)}</span>` : ""}`,
-      stripFmt(t) || t, fields.map(f => fieldHTML(f.label, f.text)).join("") + (c === "t0" ? gallery(d.images, "사진") : ""));
+      stripFmt(t) || t, fieldsWithPhotos(fields.map(f => [f.label, f.text]), c === "t0" ? d.images : [], "사진"));
   } else {
     const it = m.sections[+a].items[+c];
     const f = it.story ? "story" : fmtOf(it.title);
     const meta = `<span class="pill ghost">${esc(m.name)} · ${esc(m.sections[+a].title)}</span><span class="pill line">${FMT[f]}</span>${it.done ? `<span class="pill" style="--c:var(--accent-soft)">이행 완료</span>` : ""}`;
     openSheet(meta, stripFmt(it.title.replace(/\n/g, " ")) || it.title,
-      Object.entries(it.fields).map(([k, v]) => fieldHTML(k, v)).join("") + (it.reaction ? fieldHTML("기대 팔로워 반응", it.reaction) : "") + gallery(it.images, "사진"));
+      fieldsWithPhotos([...Object.entries(it.fields), ...(it.reaction ? [["기대 팔로워 반응", it.reaction]] : [])], it.images, "사진"));
   }
 });
 

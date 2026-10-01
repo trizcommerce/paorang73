@@ -287,9 +287,15 @@ def parse_calendar(ws, product_keys):
     merged = {(m.min_row, m.min_col): m for m in ws.merged_cells.ranges}
     month, week_rows, header_rows, cur_year = None, [], set(), None
     block_year, prev_month, direction = YEAR, None, 0
+    # B열에 "9월" 처럼 달 제목만 있는 달력은 지난 달력(옛 연도)을 행 숨기기로 가려 둔 시트 → 가려진 행은 읽지 않음
+    hidden = {r for r in range(1, ws.max_row + 1) if ws.row_dimensions[r].hidden}
+    if not any(r not in hidden and re.fullmatch(r"\d{1,2}월", text(ws.cell(r, 2).value)) for r in range(1, ws.max_row + 1)):
+        hidden = set()
     for r in range(1, ws.max_row + 1):
-        sched = re.fullmatch(r"(\d{1,2})월\s*스케줄", text(ws.cell(r, 2).value))
-        if sched:  # "10월 스케줄", "9월 스케줄" … 처럼 월별 작은 달력이 이어진 탭
+        if r in hidden:
+            continue
+        sched = re.fullmatch(r"(\d{1,2})월(?:\s*스케줄)?", text(ws.cell(r, 2).value))
+        if sched:  # "10월 스케줄", "9월 스케줄", "9월" … 처럼 월별 작은 달력이 이어진 탭
             m_ = int(sched[1])
             if prev_month is not None and m_ != prev_month:
                 direction = direction or (1 if m_ > prev_month else -1)
@@ -328,6 +334,8 @@ def parse_calendar(ws, product_keys):
         for rr in range(r + 1, min(nxt, r + 7)):
             if rr in header_rows:
                 break
+            if rr in hidden:
+                continue
             for i, c in enumerate(CAL_COLS):
                 cell = ws[f"{c}{rr}"]
                 t = text(cell.value)
@@ -350,6 +358,7 @@ def parse_calendar(ws, product_keys):
                     "product": legend.get(f),
                     "kind": kind,
                     "order": rr - r,
+                    "_fill": f,
                 })
     colors = {name: "#" + rgb[2:] for rgb, name in legend.items()}
     return events, colors
@@ -946,6 +955,19 @@ def main():
                         and p["round"] in e["text"].replace(" ", "")), None)
             if hit:
                 e["product"], e["_id"] = hit["name"], hit["id"]
+    def near(p, e):  # 제품 탭의 날짜들과 캘린더 칸 사이 거리(일)
+        ds = [s["date"] for s in p["slots"] if s["date"]] + (p["period"] or [])
+        return min((abs((dt.date.fromisoformat(d) - dt.date.fromisoformat(x)).days)
+                    for d in ds for x in (e["date"], e["end"])), default=999)
+    for e in events:  # 여러 날에 걸쳐 제품명만 적힌 칸("방탄커피", "아르히 헤어 2종")은 날짜가 가까운 그 제품 탭으로
+        if e["product"] or e["end"] <= e["date"]:
+            continue
+        t = norm(e["text"])
+        cands = [p for p in products if len(norm(p["name"])) >= 2 and (norm(p["name"]) in t or t in norm(p["name"]))
+                 and near(p, e) <= 21]
+        if cands:
+            hit = min(cands, key=lambda p: near(p, e))
+            e["product"], e["_id"] = hit["name"], hit["id"]
     for e in events:  # 범례 이름 → 제품 탭 id (같은 제품 여러 차수면 날짜가 가까운 차수)
         cands = [p for p in products if e["product"] and norm(p["name"]) == norm(e["product"])]
 
@@ -953,6 +975,17 @@ def main():
             ds = [s["date"] for s in p["slots"] if s["date"]] + (p["period"] or [])
             return min(abs((dt.date.fromisoformat(d) - dt.date.fromisoformat(e["date"])).days) for d in ds)
         e["product"] = e.pop("_id", None) or (min(cands, key=dist)["id"] if cands else None)
+    # 캘린더에 여러 날에 걸쳐 제품명이 적힌 칸 = 그 기간에 공구. 제품 탭이 아직 없어도 같은 색 칸이면 공구로 봄
+    by_id = {p["id"]: p for p in products}
+    sale_fills = {e["_fill"] for e in events if e["end"] > e["date"] and e["product"]
+                  and e["_fill"] not in (None, MEETING_FILL, HOLIDAY_FILL)}
+    for e in events:
+        f = e.pop("_fill", None)
+        if e["end"] > e["date"] and (e["product"] or f in sale_fills):
+            e["sale"] = True
+            p = by_id.get(e["product"])
+            if p and not p["period"]:  # 제품 탭에 공구일정이 안 적혀 있으면 캘린더의 기간을 사용
+                p["period"] = [e["date"], e["end"]]
     products.sort(key=lambda p: (p["period"] or [max((s["date"] for s in p["slots"] if s["date"]), default="0000")])[0],
                   reverse=True)
     months.sort(key=lambda m: m["month"], reverse=True)

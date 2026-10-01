@@ -412,6 +412,7 @@ DATA.products.forEach(p => p.slots.forEach((s, i) => {
 
 DATA.events.forEach(ev => {
   const k = ev.date;
+  if (ev.end > ev.date && ev.kind === "content" && ev.sale) return; // 공구 기간 칸은 달력 막대·공구 현황으로만 표시
   if (ev.end > ev.date && ev.kind === "content") { // 여러 날에 걸친 칸 = 여행·출장 같은 일정
     for (let d = parse(ev.date); key(d) <= ev.end; d.setDate(d.getDate() + 1))
       push(key(d), {src: "event", ev, fmt: "meeting", title: ev.text.replace(/\n/g, " "), sort: 0});
@@ -477,7 +478,7 @@ DATA.events.forEach(ev => {
   if (ev.end <= ev.date || P[ev.product]?.period || periods.some(r => r.s === ev.date && r.e === ev.end)) return;
   const t = ev.text.replace(/\s+/g, " ").trim();
   if (/^(\d+년\s*)?\d+월\s*스케줄$/.test(t)) return; // 달 제목 칸은 일정이 아님
-  const sale = /공구|진행|기획전|\d+차/.test(t);
+  const sale = ev.sale || /공구|진행|기획전|\d+차/.test(t);
   spans.push({s: ev.date, e: ev.end, label: t,
     color: sale ? BAR_COLORS[[...t].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % BAR_COLORS.length] : null});
 });
@@ -577,7 +578,7 @@ function renderCal() {
     const marks = list.filter(e => !e.holiday);
     const shown = marks.slice(0, 4).map(e => `<i class="mk ${e.fmt}" style="--c:${e.pid ? colorOf(e.pid) : "var(--muted)"}"></i>`).join("");
     const more = marks.length > 4 ? `<i class="mk more">+${marks.length - 4}</i>` : "";
-    const open = DATA.products.some(p => p.period && p.period[0] === k) ? `<span class="open-tag">OPEN</span>` : "";
+    const open = sales.some(r => r.s === k) ? `<span class="open-tag">OPEN</span>` : "";
     const on = spans.filter(r => r.s <= k && k <= r.e).map(r => `${r.label} ${mdS(r.s)}–${mdS(r.e)}`).join(", ");
     cells.push(`<button type="button" class="${cls.join(" ")}" data-k="${k}" style="grid-row:${Math.floor(i / 7) + 1};grid-column:${i % 7 + 1};--lanes:${weekLanes[Math.floor(i / 7)]}" aria-label="${esc(mdDow(k) + (marks.length ? `, 콘텐츠 ${marks.length}개` : "") + (on ? `, ${on}` : ""))}"><span class="n">${d.getDate()}</span><span class="marks">${shown}${more}</span>${open}</button>`);
   }
@@ -630,11 +631,11 @@ function renderAgenda() {
       <div class="list">${l.map((e, j) => entryHTML(e, base + j)).join("")}</div>`);
   }
   const dday = [];
-  periodsOn(sel).forEach(r => dday.push(`<span class="pill" style="--c:${colorOf(r.pid)}">${esc(pname(r.pid))} 공구 ${mdS(r.s)}–${mdS(r.e)}</span>`));
-  DATA.products.forEach(p => {
-    if (!p.period || sel >= p.period[0]) return;
-    const n = Math.round((parse(p.period[0]) - d) / 864e5);
-    if (n > 0 && n <= 30) dday.push(`<span class="pill line">${esc(p.name)} 오픈 D-${n}</span>`);
+  sales.filter(r => r.s <= sel && sel <= r.e).forEach(r => dday.push(`<span class="pill" style="--c:${r.color}">${esc(r.label)} 공구 ${mdS(r.s)}–${mdS(r.e)}</span>`));
+  sales.forEach(r => {
+    if (sel >= r.s) return;
+    const n = Math.round((parse(r.s) - d) / 864e5);
+    if (n > 0 && n <= 30) dday.push(`<span class="pill line">${esc(r.label)} 오픈 D-${n}</span>`);
   });
   const counts = {};
   dayList.forEach(e => { if (!e.holiday && e.fmt !== "meeting") counts[e.fmt] = (counts[e.fmt] || 0) + 1; });

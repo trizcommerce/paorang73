@@ -41,6 +41,36 @@ REGISTER = """<script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+// 새 버전(시트 수정·앱 수정)이 올라오면 앱을 껐다 켜지 않아도 스스로 새로고침
+(() => {
+  const VER = "__APPVER__";
+  let lastTouch = 0, busy = false;
+  ["pointerdown", "keydown", "scroll"].forEach(t =>
+    addEventListener(t, () => { lastTouch = Date.now(); }, {capture: true, passive: true}));
+  // 상세 화면·사진·캡션 수정 창이 열려 있으면 닫힐 때까지 기다림
+  const overlayOpen = () => !!document.querySelector("#sheet:not([hidden]), #viewer:not([hidden]), #editor:not([hidden])");
+  async function check(force) {
+    if (busy || document.hidden || !navigator.onLine) return;
+    busy = true;
+    try {
+      const res = await fetch("version.txt?t=" + Date.now(), {cache: "no-store"});
+      const v = res.ok ? (await res.text()).trim() : "";
+      if (!/^[0-9a-f]{16}$/.test(v) || v === VER) return;
+      if (overlayOpen() || (force !== true && Date.now() - lastTouch < 20000)) return; // 쓰는 도중에는 끊지 않음
+      let tried = "";
+      try { tried = sessionStorage.getItem("reloadedFor") || ""; } catch (e) {}
+      const [tv, tt] = tried.split("|");
+      if (tv === v && Date.now() - +tt < 120000) return; // 같은 버전으로 연달아 새로고침하지 않음
+      try { sessionStorage.setItem("reloadedFor", v + "|" + Date.now()); } catch (e) {}
+      await fetch(location.href, {cache: "reload"}).catch(() => {});
+      location.reload();
+    } catch (e) {} finally { busy = false; }
+  }
+  document.addEventListener("visibilitychange", () => check(true));
+  addEventListener("pageshow", () => check(true));
+  addEventListener("online", () => check(true));
+  setInterval(check, 60000);
+})();
 </script>
 """
 
@@ -117,6 +147,8 @@ def main():
                    if (HERE / f).exists())
     digest = hashlib.sha256((json.dumps(data, ensure_ascii=False, sort_keys=True) + code).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")
+    # 화면이 자기 버전을 알고 있어야 새 버전이 올라왔는지 비교할 수 있음
+    (PWA / "index.html").write_text(html.replace("__APPVER__", digest), encoding="utf-8")
     manifest = {
         "name": NAME, "short_name": SHORT, "lang": "ko",
         "start_url": "./", "scope": "./", "display": "standalone",

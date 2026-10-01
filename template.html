@@ -61,7 +61,7 @@ a{color:var(--accent)}
 .wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:var(--muted);font-weight:500;padding-bottom:6px}
 .wk span:nth-child(6){color:var(--sat)} .wk span:nth-child(7){color:var(--sun)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
-.day{position:relative;height:58px;display:flex;flex-direction:column;align-items:center;padding-top:5px;border-radius:12px;font-variant-numeric:tabular-nums}
+.day{position:relative;height:max(58px,calc(49px + var(--lanes,0)*16px));display:flex;flex-direction:column;align-items:center;padding-top:5px;border-radius:12px;font-variant-numeric:tabular-nums}
 .day .n{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;font-size:14px;font-weight:500;position:relative;z-index:1}
 .day.out .n{color:var(--muted);opacity:.45}
 .day.sat .n{color:var(--sat)} .day.sun .n,.day.hol .n{color:var(--sun)}
@@ -73,13 +73,11 @@ a{color:var(--accent)}
 .mk.post{border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1.6px var(--c,var(--muted))}
 .mk.story{width:5px;height:5px}
 .mk.more{width:auto;height:auto;background:none;font-size:9px;line-height:1;color:var(--muted)}
-.band{position:absolute;left:0;right:0;height:4px;background:var(--c)}
-.band.s{left:6px;border-top-left-radius:3px;border-bottom-left-radius:3px}
-.band.e{right:6px;border-top-right-radius:3px;border-bottom-right-radius:3px}
+.pbar{align-self:end;height:14px;margin-bottom:calc(2px + var(--lane,0)*16px);padding:0 5px;background:var(--c);color:var(--chip-ink);font-style:normal;font-size:10px;font-weight:600;line-height:14px;letter-spacing:-.02em;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;position:relative;z-index:2;min-width:0}
+.pbar.s{margin-left:3px;border-top-left-radius:5px;border-bottom-left-radius:5px}
+.pbar.e{margin-right:3px;border-top-right-radius:5px;border-bottom-right-radius:5px}
+.pbar.plain{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .open-tag{position:absolute;top:2px;right:2px;font-size:8.5px;font-weight:600;letter-spacing:.04em;color:var(--sun);z-index:1}
-.legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:12px 4px 0;font-size:12px;color:var(--muted)}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.legend i{width:14px;height:4px;border-radius:2px;background:var(--c)}
 
 .agenda{margin-top:22px}
 .ag-date{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
@@ -89,6 +87,10 @@ a{color:var(--accent)}
 .pill{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;background:var(--c,var(--surface-2));color:var(--chip-ink);white-space:nowrap}
 .pill.ghost{background:var(--surface-2);color:var(--ink)}
 .pill.line{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--muted)}
+.up-head{margin:28px 0 2px;font-family:var(--display);font-size:17px;font-weight:700}
+.up-date{margin:14px 2px 8px;font-size:13.5px;color:var(--muted)}
+.up-date b{color:var(--ink);font-weight:600;margin-right:4px}
+.empty.sm{margin-top:10px;padding:16px}
 .empty{padding:28px 16px;text-align:center;color:var(--muted);background:var(--surface);border-radius:16px;border:1px dashed var(--line)}
 
 .list{display:flex;flex-direction:column;gap:10px}
@@ -253,7 +255,6 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
       <div class="cal-card" id="cal-card">
         <div class="wk"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
         <div class="grid" id="cal-grid"></div>
-        <div class="legend" id="cal-legend"></div>
       </div>
       <div class="agenda" id="agenda"></div>
     </div>
@@ -451,6 +452,19 @@ const periods = DATA.products.filter(p => p.period).map(p => ({pid: p.id, s: p.p
 const periodsOn = k => periods.filter(r => r.s <= k && k <= r.e);
 const colorOf = pid => P[pid]?.color || "var(--muted)";
 const pname = pid => P[pid] ? `${P[pid].name}${P[pid].round ? " " + P[pid].round : ""}` : "";
+const mdS = k => { const d = parse(k); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const BAR_COLORS = ["#A4C2F4", "#FFE599", "#EA9999", "#B6D7A8", "#D9D2E9", "#F9CB9C", "#D5A6BD", "#A2C4C9"];
+// 달력 안에 막대로 그릴 기간: 제품 공구 기간 + 캘린더 탭의 여러 날 일정(제품 탭이 아직 없는 공구, 여행 등)
+const spans = periods.map(r => ({s: r.s, e: r.e, color: colorOf(r.pid), label: pname(r.pid)}));
+DATA.events.forEach(ev => {
+  if (ev.end <= ev.date || P[ev.product]?.period || periods.some(r => r.s === ev.date && r.e === ev.end)) return;
+  const t = ev.text.replace(/\s+/g, " ").trim();
+  if (/^(\d+년\s*)?\d+월\s*스케줄$/.test(t)) return; // 달 제목 칸은 일정이 아님
+  const sale = /공구|진행|기획전|\d+차/.test(t);
+  spans.push({s: ev.date, e: ev.end, label: t,
+    color: sale ? BAR_COLORS[[...t].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % BAR_COLORS.length] : null});
+});
+spans.sort((a, b) => a.s < b.s ? -1 : a.s > b.s ? 1 : 0);
 
 /* ---------------- calendar ---------------- */
 let cur = parse(TODAY); cur.setDate(1);
@@ -466,6 +480,27 @@ function renderCal() {
   const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7));
   const cells = [];
   const weeks = Math.ceil((((first.getDay() + 6) % 7) + new Date(y, m + 1, 0).getDate()) / 7);
+  // 기간 막대: 주마다 잘라서 겹치면 줄(lane)을 나눠 쌓기
+  const bars = [], weekLanes = [];
+  const cellW = ($("#cal-grid").clientWidth || 340) / 7;
+  const textW = t => [...t].reduce((n, c) => n + (c.charCodeAt(0) > 0x2E7F ? 10 : c === " " ? 3 : 5.6), 0);
+  for (let w = 0; w < weeks; w++) {
+    const ws = new Date(start); ws.setDate(start.getDate() + w * 7);
+    const we = new Date(ws); we.setDate(ws.getDate() + 6);
+    const wsK = key(ws), weK = key(we), laneEnd = [];
+    spans.filter(r => r.s <= weK && r.e >= wsK).forEach(r => {
+      const a = r.s > wsK ? r.s : wsK, b = r.e < weK ? r.e : weK;
+      const ca = Math.round((parse(a) - ws) / 864e5), cb = Math.round((parse(b) - ws) / 864e5);
+      let j = laneEnd.findIndex(x => x < a); if (j < 0) j = laneEnd.length;
+      laneEnd[j] = b;
+      const cls = ["pbar"]; if (a === r.s) cls.push("s"); if (b === r.e) cls.push("e"); if (!r.color) cls.push("plain");
+      const full = `${r.label} ${mdS(r.s)}–${mdS(r.e)}`;
+      const fits = textW(full) <= (cb - ca + 1) * cellW - 16;
+      const text = fits ? full : cb - ca >= 2 ? `${mdS(r.s)}–${mdS(r.e)} ${r.label}` : r.label; // 좁으면 날짜를 앞에, 더 좁으면 이름만
+      bars.push(`<i class="${cls.join(" ")}" style="grid-row:${w + 1};grid-column:${ca + 1}/${cb + 2};--lane:${j}${r.color ? `;--c:${r.color}` : ""}">${esc(text)}</i>`);
+    });
+    weekLanes.push(laneEnd.length);
+  }
   for (let i = 0; i < weeks * 7; i++) {
     const d = new Date(start); d.setDate(start.getDate() + i);
     const k = key(d), list = byDate[k] || [];
@@ -478,19 +513,11 @@ function renderCal() {
     const marks = list.filter(e => !e.holiday);
     const shown = marks.slice(0, 4).map(e => `<i class="mk ${e.fmt}" style="--c:${e.pid ? colorOf(e.pid) : "var(--muted)"}"></i>`).join("");
     const more = marks.length > 4 ? `<i class="mk more">+${marks.length - 4}</i>` : "";
-    const bands = periodsOn(k).map((r, j) => {
-      const b = []; if (r.s === k || d.getDay() === 1) b.push("s"); if (r.e === k || d.getDay() === 0) b.push("e");
-      return `<i class="band ${b.join(" ")}" style="--c:${colorOf(r.pid)};bottom:${3 + j * 5}px"></i>`;
-    }).join("");
     const open = DATA.products.some(p => p.period && p.period[0] === k) ? `<span class="open-tag">OPEN</span>` : "";
-    cells.push(`<button type="button" class="${cls.join(" ")}" data-k="${k}" aria-label="${mdDow(k)}${marks.length ? `, 콘텐츠 ${marks.length}개` : ""}"><span class="n">${d.getDate()}</span><span class="marks">${shown}${more}</span>${bands}${open}</button>`);
+    const on = spans.filter(r => r.s <= k && k <= r.e).map(r => `${r.label} ${mdS(r.s)}–${mdS(r.e)}`).join(", ");
+    cells.push(`<button type="button" class="${cls.join(" ")}" data-k="${k}" style="grid-row:${Math.floor(i / 7) + 1};grid-column:${i % 7 + 1};--lanes:${weekLanes[Math.floor(i / 7)]}" aria-label="${esc(mdDow(k) + (marks.length ? `, 콘텐츠 ${marks.length}개` : "") + (on ? `, ${on}` : ""))}"><span class="n">${d.getDate()}</span><span class="marks">${shown}${more}</span>${open}</button>`);
   }
-  $("#cal-grid").innerHTML = cells.join("");
-  const mStart = key(new Date(y, m, 1)), mEnd = key(new Date(y, m + 1, 0));
-  const lg = periods.filter(r => r.s <= mEnd && r.e >= mStart)
-    .map(r => `<span><i style="--c:${colorOf(r.pid)}"></i>${esc(pname(r.pid))} 공구 ${md(r.s)}–${md(r.e)}</span>`);
-  $("#cal-legend").innerHTML = lg.join("");
-  $("#cal-legend").hidden = !lg.length;
+  $("#cal-grid").innerHTML = cells.join("") + bars.join("");
   renderAgenda();
 }
 
@@ -524,23 +551,37 @@ function entryHTML(e, idx, opts = {}) {
 
 let agendaList = [];
 function renderAgenda() {
-  agendaList = byDate[sel] || [];
+  const dayList = byDate[sel] || [];
+  agendaList = dayList.slice();
   const d = parse(sel);
+  const soon = []; // 뒤따르는 3일 안의 콘텐츠
+  for (let i = 1; i <= 3; i++) {
+    const nd = new Date(d); nd.setDate(d.getDate() + i);
+    const l = byDate[key(nd)] || [];
+    if (!l.length) continue;
+    const base = agendaList.length;
+    agendaList.push(...l);
+    const when = sel === TODAY ? (i === 1 ? "내일" : i === 2 ? "모레" : "3일 뒤") : `${i}일 뒤`;
+    soon.push(`<div class="up-date"><b>${nd.getMonth() + 1}월 ${nd.getDate()}일 ${DOW[nd.getDay()]}요일</b>${when}</div>
+      <div class="list">${l.map((e, j) => entryHTML(e, base + j)).join("")}</div>`);
+  }
   const dday = [];
-  periodsOn(sel).forEach(r => dday.push(`<span class="pill" style="--c:${colorOf(r.pid)}">${esc(pname(r.pid))} 공구 진행</span>`));
+  periodsOn(sel).forEach(r => dday.push(`<span class="pill" style="--c:${colorOf(r.pid)}">${esc(pname(r.pid))} 공구 ${mdS(r.s)}–${mdS(r.e)}</span>`));
   DATA.products.forEach(p => {
     if (!p.period || sel >= p.period[0]) return;
     const n = Math.round((parse(p.period[0]) - d) / 864e5);
     if (n > 0 && n <= 30) dday.push(`<span class="pill line">${esc(p.name)} 오픈 D-${n}</span>`);
   });
   const counts = {};
-  agendaList.forEach(e => { if (!e.holiday && e.fmt !== "meeting") counts[e.fmt] = (counts[e.fmt] || 0) + 1; });
+  dayList.forEach(e => { if (!e.holiday && e.fmt !== "meeting") counts[e.fmt] = (counts[e.fmt] || 0) + 1; });
   const sum = Object.entries(counts).map(([f, n]) => `${FMT[f]} ${n}`).join(" · ");
   $("#agenda").innerHTML = `
     <div class="ag-date"><span class="big">${d.getMonth() + 1}월 ${d.getDate()}일</span><span class="dow">${DOW[d.getDay()]}요일${sel === TODAY ? " · 오늘" : ""}</span></div>
     <div class="ag-sub">${dday.join("")}${sum ? `<span class="pill ghost">${sum}</span>` : ""}</div>
-    ${agendaList.length ? `<div class="list">${agendaList.map((e, i) => entryHTML(e, i)).join("")}</div>`
+    ${dayList.length ? `<div class="list">${dayList.map((e, i) => entryHTML(e, i)).join("")}</div>`
       : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
+    <div class="up-head">${sel === TODAY ? "다가오는 3일" : "이후 3일"}</div>
+    ${soon.length ? soon.join("") : `<div class="empty sm">3일 안에 잡힌 콘텐츠가 없어요.</div>`}
     <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트 · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a></p>`;
 }
 

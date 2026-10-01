@@ -57,7 +57,17 @@ a{color:var(--accent)}
 .icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--ink)}
 .icon-btn:active{background:var(--surface-2)}
 .today-btn{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;font-weight:500;background:var(--surface)}
-.cal-card{background:var(--surface);border-radius:20px;padding:10px 8px 8px;box-shadow:var(--shadow);touch-action:pan-y}
+.sale{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.sale:empty{display:none}
+.sale-row{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding:9px 12px 9px 10px;box-shadow:var(--shadow);border-left:5px solid var(--c,var(--line))}
+.sale-row .t{flex:1;min-width:0}
+.sale-row .k{font-size:11px;font-weight:600;color:var(--muted)}
+.sale-row.live .k{color:var(--sun)}
+.sale-row .nm{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sale-row .v{text-align:right;white-space:nowrap}
+.sale-row .v b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.sale-row .v small{display:block;font-size:10.5px;color:var(--muted)}
+.cal-card{background:var(--surface);border-radius:20px;padding:10px 8px 4px;box-shadow:var(--shadow);touch-action:pan-y}
 .wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:var(--muted);font-weight:500;padding-bottom:6px}
 .wk span:nth-child(6){color:var(--sat)} .wk span:nth-child(7){color:var(--sun)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
@@ -79,7 +89,7 @@ a{color:var(--accent)}
 .pbar.plain{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .open-tag{position:absolute;top:2px;right:2px;font-size:8.5px;font-weight:600;letter-spacing:.04em;color:var(--sun);z-index:1}
 
-.agenda{margin-top:22px}
+.agenda{margin-top:12px}
 .ag-date{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
 .ag-date .big{font-family:var(--display);font-size:22px;font-weight:700}
 .ag-date .dow{color:var(--muted);font-size:14px}
@@ -252,6 +262,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
       </div>
     </div>
     <div class="scroll" id="cal-scroll">
+      <div class="sale" id="sale" aria-live="off"></div>
       <div class="cal-card" id="cal-card">
         <div class="wk"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
         <div class="grid" id="cal-grid"></div>
@@ -455,7 +466,7 @@ const pname = pid => P[pid] ? `${P[pid].name}${P[pid].round ? " " + P[pid].round
 const mdS = k => { const d = parse(k); return `${d.getMonth() + 1}/${d.getDate()}`; };
 const BAR_COLORS = ["#A4C2F4", "#FFE599", "#EA9999", "#B6D7A8", "#D9D2E9", "#F9CB9C", "#D5A6BD", "#A2C4C9"];
 // 달력 안에 막대로 그릴 기간: 제품 공구 기간 + 캘린더 탭의 여러 날 일정(제품 탭이 아직 없는 공구, 여행 등)
-const spans = periods.map(r => ({s: r.s, e: r.e, color: colorOf(r.pid), label: pname(r.pid)}));
+const spans = periods.map(r => ({s: r.s, e: r.e, color: colorOf(r.pid), label: pname(r.pid), pid: r.pid}));
 DATA.events.forEach(ev => {
   if (ev.end <= ev.date || P[ev.product]?.period || periods.some(r => r.s === ev.date && r.e === ev.end)) return;
   const t = ev.text.replace(/\s+/g, " ").trim();
@@ -465,6 +476,53 @@ DATA.events.forEach(ev => {
     color: sale ? BAR_COLORS[[...t].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % BAR_COLORS.length] : null});
 });
 spans.sort((a, b) => a.s < b.s ? -1 : a.s > b.s ? 1 : 0);
+
+/* ---------------- 공구 현황: 진행 중 공구 마감 카운트다운 + 다음 공구 D-day ---------------- */
+const sales = spans.filter(r => r.color).map(r => {
+  // 시트의 '오픈시간'(예: 오전 10시)을 읽어 오픈 시각으로, 마감은 마지막 날 밤 12시로 봄
+  const info = P[r.pid]?.info.find(x => /오픈\s*시간/.test(x.label));
+  const openText = info ? plain(info.text).split("\n")[0].replace(/^\d+\/\d+\s*(\([^)]*\))?\s*/, "").trim() : "";
+  const m = openText.match(/(오전|오후)?\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+  const start = parse(r.s), end = parse(r.e);
+  if (m) start.setHours((+m[2] % 12) + (m[1] === "오후" ? 12 : 0), +(m[3] || 0));
+  end.setDate(end.getDate() + 1);
+  return {...r, start, end, openText: m && openText.length <= 16 ? openText : ""};
+});
+const pad2 = n => String(n).padStart(2, "0");
+const leftText = ms => { // 남은 시간 → "3일 08:12:45"
+  const t = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(t / 86400);
+  return `${d ? d + "일 " : ""}${pad2(Math.floor(t % 86400 / 3600))}:${pad2(Math.floor(t % 3600 / 60))}:${pad2(t % 60)}`;
+};
+const mdDowS = d => `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`;
+function renderSale() {
+  const now = new Date(), today0 = parse(key(now));
+  const live = sales.filter(r => r.start <= now && now < r.end);
+  const coming = sales.filter(r => now < r.start);
+  const next = coming.filter(r => r.s === coming[0].s);
+  const row = (r, isLive) => {
+    const n = Math.round((parse(r.s) - today0) / 864e5);
+    const until = isLive ? r.end : r.start;
+    const last = parse(r.e);
+    const value = isLive || n === 0 ? `<b data-until="${+until}">${leftText(until - now)}</b>` : `<b>D-${n}</b>`;
+    const sub = isLive ? `${mdDowS(last)} 밤 12시 마감까지` : n === 0 ? `오늘 ${r.openText} 오픈까지`.replace("  ", " ")
+      : `${mdDowS(parse(r.s))} ${r.openText} 오픈`.replace("  ", " ");
+    return `<div class="sale-row${isLive ? " live" : ""}" style="--c:${r.color}">
+      <div class="t"><div class="k">${isLive ? "● 진행 중인 공구" : "다음 공구"}</div><div class="nm">${esc(r.label)}</div></div>
+      <div class="v">${value}<small>${esc(sub)}</small></div></div>`;
+  };
+  $("#sale").innerHTML = live.map(r => row(r, true)).join("") + next.map(r => row(r, false)).join("");
+}
+renderSale();
+setInterval(() => { // 1초마다 남은 시간 갱신, 0이 되면(마감·오픈) 다시 그림
+  const now = Date.now();
+  let done = false;
+  document.querySelectorAll("#sale [data-until]").forEach(b => {
+    const ms = +b.dataset.until - now;
+    if (ms <= 0) done = true; else b.textContent = leftText(ms);
+  });
+  if (done) renderSale();
+}, 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) renderSale(); });
 
 /* ---------------- calendar ---------------- */
 let cur = parse(TODAY); cur.setDate(1);

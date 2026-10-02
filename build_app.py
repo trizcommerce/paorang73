@@ -918,29 +918,58 @@ def parse_month(ws):
 
 
 # ---------------------------------------------------------------- main
-PAY_RE = re.compile(r"결제\s*창[^\n]*?(\d{1,2})\s*/\s*(\d{1,2})[^\n\d]*?(오전|오후)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시(?:\s*(\d{1,2})\s*분)?)")
+_WHEN = r"[^\n]*?(\d{1,2})\s*/\s*(\d{1,2})[^\n\d]*?(오전|오후)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시(?:\s*(\d{1,2})\s*분)?)"
+PAY_RE = re.compile(r"결제\s*창" + _WHEN)  # "결제창 마감: 5/11(월) 오전 11시 20분"
+SALE_RE = re.compile(r"(?:공구|커머스|판매|주문)\s*(?:마감|종료)" + _WHEN)  # "공구 마감: 10/4(일) 22:00"
 
 
-def pay_close(p):
-    """제품 정보에 적힌 '결제창 마감: 5/11(월) 오전 11시 20분' → '2026-05-11T11:20' (없으면 None)"""
-    if not p["period"]:
-        return None
-    end = dt.date.fromisoformat(p["period"][1])
-    for x in p["info"]:
-        raw = re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", f'{x["label"]}\n{x["text"]}'))
-        for ln in raw.split("\n"):
-            m = PAY_RE.search(ln) if "마감" in ln else None
-            if not m:
-                continue
-            mo, d, ampm, h, mi = int(m[1]), int(m[2]), m[3], int(m[4]), int(m[5] or m[6] or 0)
-            if ampm == "오후" and h < 12:
-                h += 12
-            if ampm == "오전" and h == 12:
-                h = 0
-            for y in (end.year, end.year + 1, end.year - 1):  # 연말·연초에 걸친 공구
-                if _valid(y, mo, d) and h < 24 and mi < 60 and -1 <= (dt.date(y, mo, d) - end).days <= 14:
-                    return f"{y}-{mo:02d}-{d:02d}T{h:02d}:{mi:02d}"
+def _when(m, end, lo, hi):
+    """정규식에 잡힌 월/일·시각 → 공구 마지막 날(end)에서 lo~hi일 안이면 '2026-05-11T11:20', 아니면 None"""
+    mo, d, ampm, h, mi = int(m[1]), int(m[2]), m[3], int(m[4]), int(m[5] or m[6] or 0)
+    if ampm == "오후" and h < 12:
+        h += 12
+    if ampm == "오전" and h == 12:
+        h = 0
+    for y in (end.year, end.year + 1, end.year - 1):  # 연말·연초에 걸친 공구
+        if _valid(y, mo, d) and h < 24 and mi < 60 and lo <= (dt.date(y, mo, d) - end).days <= hi:
+            return f"{y}-{mo:02d}-{d:02d}T{h:02d}:{mi:02d}"
     return None
+
+
+def scan_close_times(sheets, products, product_sheets):
+    """보이는 모든 탭의 모든 칸에서 공구 마감·결제창 마감 시각을 찾아 제품에 붙임.
+    제품 탭 안이면 그 제품, 다른 탭(캘린더·안내 탭 등)이면 같은 칸에 적힌 제품명 → 없으면 날짜가 맞는 공구."""
+    owner_of = {id(ws): p for p, ws in zip(products, product_sheets)}
+    for ws in sorted(sheets, key=lambda w: id(w) not in owner_of):  # 제품 탭에 적힌 값이 우선
+        owner = owner_of.get(id(ws))
+        for row in ws.iter_rows():
+            for c in row:
+                v = c.value
+                if v is None or isinstance(v, (bool, int, float, dt.datetime, dt.date)):
+                    continue
+                t = re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", str(v)))
+                if ("마감" not in t and "종료" not in t) or ws.row_dimensions[c.row].hidden:
+                    continue
+                named = [p for p in products if len(norm(p["name"])) >= 2 and norm(p["name"]) in norm(t)]
+                for ln in t.split("\n"):
+                    for key, rx, lo, hi in (("payClose", PAY_RE, -1, 14), ("saleClose", SALE_RE, -1, 1)):
+                        m = rx.search(ln)
+                        if not m or (key == "payClose" and "마감" not in ln):
+                            continue
+                        cands = [owner] if owner else named or products
+                        if not owner and not named:  # 제품명이 없으면 날짜가 딱 맞는 공구만
+                            hi = min(hi, 3)
+                        hits = []
+                        for p in cands:
+                            if not p["period"]:
+                                continue
+                            end = dt.date.fromisoformat(p["period"][1])
+                            iso = _when(m, end, lo, hi)
+                            if iso:
+                                hits.append((abs((dt.date.fromisoformat(iso[:10]) - end).days), p["id"], p, iso))
+                        hits.sort(key=lambda h: h[:2])
+                        if hits and (len(hits) == 1 or hits[0][0] < hits[1][0] or owner or named):
+                            hits[0][2].setdefault(key, hits[0][3])
 
 
 def main():
@@ -1002,10 +1031,6 @@ def main():
         e["product"] = e.pop("_id", None) or (min(cands, key=dist)["id"] if cands else None)
     # 캘린더에 여러 날에 걸쳐 제품명이 적힌 칸 = 그 기간에 공구. 제품 탭이 아직 없어도 같은 색 칸이면 공구로 봄
     by_id = {p["id"]: p for p in products}
-    for p in products:  # 결제창 마감 시각이 따로 적힌 공구
-        pc = pay_close(p)
-        if pc:
-            p["payClose"] = pc
     sale_fills = {e["_fill"] for e in events if e["end"] > e["date"] and e["product"]
                   and e["_fill"] not in (None, MEETING_FILL, HOLIDAY_FILL)}
     for e in events:
@@ -1015,6 +1040,7 @@ def main():
             p = by_id.get(e["product"])
             if p and not p["period"]:  # 제품 탭에 공구일정이 안 적혀 있으면 캘린더의 기간을 사용
                 p["period"] = [e["date"], e["end"]]
+    scan_close_times(sheets, products, product_sheets)  # 공구 마감·결제창 마감 시각 (시트 어디에 적혀 있든)
     products.sort(key=lambda p: (p["period"] or [max((s["date"] for s in p["slots"] if s["date"]), default="0000")])[0],
                   reverse=True)
     months.sort(key=lambda m: m["month"], reverse=True)

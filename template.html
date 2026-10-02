@@ -509,9 +509,12 @@ const sales = spans.filter(r => r.color).map(r => {
   if (m) start.setHours((+m[2] % 12) + (m[1] === "오후" ? 12 : 0), +(m[3] || 0));
   end.setDate(end.getDate() + 1);
   // 시트에 결제창 마감 시각이 따로 적혀 있고 공구 마감(마지막 날 밤 12시)과 다르면 따로 카운트
+  const sc = P[r.pid]?.saleClose ? new Date(P[r.pid].saleClose) : null; // 시트에 공구 마감 시각이 적혀 있으면 그 시각
+  const closeAt = sc && !isNaN(sc) && sc > start;
+  if (closeAt) end.setTime(+sc);
   const pc = P[r.pid]?.payClose ? new Date(P[r.pid].payClose) : null;
   const pay = pc && !isNaN(pc) && Math.abs(pc - end) > 60000 ? pc : null;
-  return {...r, start, end, pay, openText: m && openText.length <= 16 ? openText : ""};
+  return {...r, start, end, pay, closeAt, openText: m && openText.length <= 16 ? openText : ""};
 });
 const pad2 = n => String(n).padStart(2, "0");
 const leftText = ms => { // 남은 시간 → "3일 08:12:45"
@@ -536,7 +539,7 @@ function renderSale() {
     const until = isLive ? r.end : r.start;
     const last = parse(r.e);
     const value = isLive || n === 0 ? `<b data-until="${+until}">${leftText(until - now)}</b>` : `<b>D-${n}</b>`;
-    const sub = isLive ? `${mdDowS(last)} 밤 12시 마감까지` : n === 0 ? `오늘 ${r.openText} 오픈까지`.replace("  ", " ")
+    const sub = isLive ? (r.closeAt ? `${hm(r.end)} 마감까지` : `${mdDowS(last)} 밤 12시 마감까지`) : n === 0 ? `오늘 ${r.openText} 오픈까지`.replace("  ", " ")
       : `${mdDowS(parse(r.s))} ${r.openText} 오픈`.replace("  ", " ");
     return `<div class="sale-row${isLive ? " live" : ""}" style="--c:${r.color}">
       <div class="t"><div class="k">${isLive ? "● 진행 중인 공구" : "다음 공구"}</div><div class="nm">${esc(r.label)}</div></div>

@@ -246,6 +246,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .who-card input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+.toast.big{bottom:auto;top:45%;z-index:95;padding:16px 24px;border-radius:18px;font-size:18px;max-width:86vw;text-align:center;white-space:nowrap}
 .viewer{position:fixed;inset:0;z-index:60;background:rgba(8,10,8,.94);display:flex;flex-direction:column}
 .viewer[hidden]{display:none!important}
 .viewer .bar{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;color:#fff;font-size:14px;font-variant-numeric:tabular-nums}
@@ -321,7 +322,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="who" id="who" role="dialog" aria-modal="true" aria-labelledby="who-title" hidden>
   <form class="who-card" id="who-form">
-    <h3 id="who-title">셀러명을 알려주세요</h3>
+    <h3 id="who-title">이름을 입력해주세요</h3>
     <input id="who-name" type="text" maxlength="20" autocomplete="off" aria-labelledby="who-title" required>
     <button class="cta" type="submit">확인</button>
   </form>
@@ -820,13 +821,14 @@ $("#who-form").addEventListener("submit", ev => {
   viewer.id = viewer.id || Math.random().toString(36).slice(2, 10);
   try { localStorage.setItem("viewer", JSON.stringify(viewer)); } catch (e) {}
   $("#who").hidden = true;
+  toast(`${name}님 환영합니다🥰`, true); // 이름을 처음 입력했을 때 한 번만
   logOpen();
 });
 document.addEventListener("visibilitychange", () => { if (!document.hidden && viewer.name) logOpen(); });
 
-function toast(msg) {
-  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+function toast(msg, big) {
+  const t = $("#toast"); t.textContent = msg; t.classList.toggle("big", !!big); t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), big ? 2400 : 1600);
 }
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); toast("복사했어요"); return; } catch (e) {}

@@ -791,7 +791,7 @@ function draftKey(cap) { // 캡션 원문별로 이 휴대폰에 수정본 저�
 function draftOf(cap) { return store.get(draftKey(cap)); }
 let toastTimer;
 /* ---------------- 조회 기록 (담당자만 보는 비공개 시트로 전송) ---------------- */
-const LOG_URL = ""; // Apps Script 웹 앱 주소. 비어 있으면 기록도, 이름 묻기도 하지 않음
+const LOG_URL = "https://script.google.com/macros/s/AKfycbxJOcpnkYX3SmMaJK03qEev2jVj8h1Mc6rwisc00nmQVPV92RP3CBVdgdw0wRbH20LXDg/exec"; // Apps Script 웹 앱 주소. 비어 있으면 기록도, 이름 묻기도 하지 않음
 const viewer = (() => { try { return JSON.parse(localStorage.getItem("viewer")) || {}; } catch (e) { return {}; } })();
 const deviceKind = () => { const u = navigator.userAgent; return /iPhone|iPod/.test(u) ? "아이폰" : /iPad/.test(u) ? "아이패드" : /Android/.test(u) ? "안드로이드" : "PC"; };
 function logView(type, title, context) {

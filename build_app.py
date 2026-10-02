@@ -918,6 +918,31 @@ def parse_month(ws):
 
 
 # ---------------------------------------------------------------- main
+PAY_RE = re.compile(r"결제\s*창[^\n]*?(\d{1,2})\s*/\s*(\d{1,2})[^\n\d]*?(오전|오후)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시(?:\s*(\d{1,2})\s*분)?)")
+
+
+def pay_close(p):
+    """제품 정보에 적힌 '결제창 마감: 5/11(월) 오전 11시 20분' → '2026-05-11T11:20' (없으면 None)"""
+    if not p["period"]:
+        return None
+    end = dt.date.fromisoformat(p["period"][1])
+    for x in p["info"]:
+        raw = re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", f'{x["label"]}\n{x["text"]}'))
+        for ln in raw.split("\n"):
+            m = PAY_RE.search(ln) if "마감" in ln else None
+            if not m:
+                continue
+            mo, d, ampm, h, mi = int(m[1]), int(m[2]), m[3], int(m[4]), int(m[5] or m[6] or 0)
+            if ampm == "오후" and h < 12:
+                h += 12
+            if ampm == "오전" and h == 12:
+                h = 0
+            for y in (end.year, end.year + 1, end.year - 1):  # 연말·연초에 걸친 공구
+                if _valid(y, mo, d) and h < 24 and mi < 60 and -1 <= (dt.date(y, mo, d) - end).days <= 14:
+                    return f"{y}-{mo:02d}-{d:02d}T{h:02d}:{mi:02d}"
+    return None
+
+
 def main():
     local = "--local" in sys.argv
     if CONFIG.get("per_tab"):
@@ -977,6 +1002,10 @@ def main():
         e["product"] = e.pop("_id", None) or (min(cands, key=dist)["id"] if cands else None)
     # 캘린더에 여러 날에 걸쳐 제품명이 적힌 칸 = 그 기간에 공구. 제품 탭이 아직 없어도 같은 색 칸이면 공구로 봄
     by_id = {p["id"]: p for p in products}
+    for p in products:  # 결제창 마감 시각이 따로 적힌 공구
+        pc = pay_close(p)
+        if pc:
+            p["payClose"] = pc
     sale_fills = {e["_fill"] for e in events if e["end"] > e["date"] and e["product"]
                   and e["_fill"] not in (None, MEETING_FILL, HOLIDAY_FILL)}
     for e in events:

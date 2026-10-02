@@ -72,6 +72,8 @@ a{color:var(--accent)}
 .sale-row .v{text-align:right;white-space:nowrap}
 .sale-row .v b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .sale-row .v small{display:block;font-size:10.5px;color:var(--muted)}
+.sale-row .v small.pay{margin-top:2px;font-variant-numeric:tabular-nums}
+.sale-row .v small.pay span{font-weight:600;color:var(--ink)}
 .cal-card{background:var(--surface);border-radius:20px;padding:10px 8px 4px;box-shadow:var(--shadow);touch-action:pan-y}
 .wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:var(--muted);font-weight:500;padding-bottom:6px}
 .wk span:nth-child(6){color:var(--sat)} .wk span:nth-child(7){color:var(--sun)}
@@ -506,7 +508,10 @@ const sales = spans.filter(r => r.color).map(r => {
   const start = parse(r.s), end = parse(r.e);
   if (m) start.setHours((+m[2] % 12) + (m[1] === "오후" ? 12 : 0), +(m[3] || 0));
   end.setDate(end.getDate() + 1);
-  return {...r, start, end, openText: m && openText.length <= 16 ? openText : ""};
+  // 시트에 결제창 마감 시각이 따로 적혀 있고 공구 마감(마지막 날 밤 12시)과 다르면 따로 카운트
+  const pc = P[r.pid]?.payClose ? new Date(P[r.pid].payClose) : null;
+  const pay = pc && !isNaN(pc) && Math.abs(pc - end) > 60000 ? pc : null;
+  return {...r, start, end, pay, openText: m && openText.length <= 16 ? openText : ""};
 });
 const pad2 = n => String(n).padStart(2, "0");
 const leftText = ms => { // 남은 시간 → "3일 08:12:45"
@@ -516,11 +521,18 @@ const leftText = ms => { // 남은 시간 → "3일 08:12:45"
 const mdDowS = d => `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`;
 function renderSale() {
   const now = new Date(), today0 = parse(key(now));
-  const live = sales.filter(r => r.start <= now && now < r.end);
+  const live = sales.filter(r => r.start <= now && (now < r.end || (r.pay && now < r.pay)));
   const coming = sales.filter(r => now < r.start);
   const next = coming.filter(r => r.s === coming[0].s);
   const row = (r, isLive) => {
     const n = Math.round((parse(r.s) - today0) / 864e5);
+    const hm = d => `${mdDowS(d)} ${d.getHours()}:${pad2(d.getMinutes())}`;
+    if (isLive && now >= r.end) // 공구 기간은 끝났고 결제창만 열려 있는 동안
+      return `<div class="sale-row live" style="--c:${r.color}">
+        <div class="t"><div class="k">● 결제창 마감 전</div><div class="nm">${esc(r.label)}</div></div>
+        <div class="v"><b data-until="${+r.pay}">${leftText(r.pay - now)}</b><small>${esc(`결제창 ${hm(r.pay)} 마감까지`)}</small></div></div>`;
+    const payLine = isLive && r.pay && now < r.pay
+      ? `<small class="pay">결제창 마감까지 <span data-until="${+r.pay}">${leftText(r.pay - now)}</span> · ${esc(hm(r.pay))}</small>` : "";
     const until = isLive ? r.end : r.start;
     const last = parse(r.e);
     const value = isLive || n === 0 ? `<b data-until="${+until}">${leftText(until - now)}</b>` : `<b>D-${n}</b>`;
@@ -528,7 +540,7 @@ function renderSale() {
       : `${mdDowS(parse(r.s))} ${r.openText} 오픈`.replace("  ", " ");
     return `<div class="sale-row${isLive ? " live" : ""}" style="--c:${r.color}">
       <div class="t"><div class="k">${isLive ? "● 진행 중인 공구" : "다음 공구"}</div><div class="nm">${esc(r.label)}</div></div>
-      <div class="v">${value}<small>${esc(sub)}</small></div></div>`;
+      <div class="v">${value}<small>${esc(sub)}</small>${payLine}</div></div>`;
   };
   $("#sale").innerHTML = live.map(r => row(r, true)).join("") + next.map(r => row(r, false)).join("");
 }

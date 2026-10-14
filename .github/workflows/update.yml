@@ -14,8 +14,9 @@ permissions:
   pages: write
   id-token: write
 
+# 한 번에 하나씩 배포. (예전 'pages' 묶음은 GitHub 쪽에서 멈춘 대기 작업이 막고 있어 이름을 바꿈)
 concurrency:
-  group: pages
+  group: pages-deploy
   cancel-in-progress: false
 
 jobs:

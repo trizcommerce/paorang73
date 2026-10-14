@@ -936,6 +936,23 @@ def _when(m, end, lo, hi):
     return None
 
 
+TOP_MARK = re.compile(r"[(\[（]?\s*모바일\s*캘린더[^)\]）\n⟪⟫]*상단\s*배치\s*[)\]）]?")  # 시트에 숨겨 둔 '상단 배치' 표시
+INFO_RANKS = [r"공구\s*(제품|상품)", r"공구\s*(일정|진행|기간)|진행\s*일자", r"이벤트"]  # 공구 제품 → 공구 일정 → 이벤트
+
+
+def order_info(p):
+    """제품 화면 상단에 먼저 보여 줄 정보에 top 순번을 붙임 (화면은 top 순 → 나머지는 시트 순)"""
+    for x in p["info"]:
+        if TOP_MARK.search(x["label"]) or TOP_MARK.search(x["text"]):
+            x["label"], x["text"] = TOP_MARK.sub("", x["label"]).strip(), TOP_MARK.sub("", x["text"]).strip()
+            x["top"] = len(INFO_RANKS)  # 표시가 있는 칸은 이벤트 다음, 소구포인트 앞
+        if CONFIG.get("info_order") == "commerce":
+            lab = re.sub(r"⟪[^⟫]*⟫", "", x["label"])
+            rank = next((i for i, rx in enumerate(INFO_RANKS) if re.search(rx, lab)), None)
+            if rank is not None and len(lab) <= 12:
+                x["top"] = rank
+
+
 def scan_close_times(sheets, products, product_sheets):
     """보이는 모든 탭의 모든 칸에서 공구 마감·결제창 마감 시각을 찾아 제품에 붙임.
     제품 탭 안이면 그 제품, 다른 탭(캘린더·안내 탭 등)이면 같은 칸에 적힌 제품명 → 없으면 날짜가 맞는 공구."""
@@ -1040,6 +1057,8 @@ def main():
             p = by_id.get(e["product"])
             if p and not p["period"]:  # 제품 탭에 공구일정이 안 적혀 있으면 캘린더의 기간을 사용
                 p["period"] = [e["date"], e["end"]]
+    for p in products:
+        order_info(p)
     scan_close_times(sheets, products, product_sheets)  # 공구 마감·결제창 마감 시각 (시트 어디에 적혀 있든)
     products.sort(key=lambda p: (p["period"] or [max((s["date"] for s in p["slots"] if s["date"]), default="0000")])[0],
                   reverse=True)

@@ -1113,9 +1113,11 @@ function statusOf(p) {
 }
 function productPage(p) {
   const pi = DATA.products.indexOf(p);
-  const short = p.info.filter(x => plain(x.text).length < 260 && !/소구점|키워드/.test(x.label));
-  const long = p.info.filter(x => !short.includes(x) && x.label !== "공구상품");
-  const kv = short.filter(x => x.label !== "공구상품").map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
+  const tops = p.info.filter(x => x.top != null).sort((a, b) => a.top - b.top); // 공구 제품 → 공구 일정 → 이벤트 → 상단 배치 표시
+  const rest = p.info.filter(x => x.top == null);
+  const short = rest.filter(x => plain(x.text).length < 260 && !/소구점|키워드/.test(x.label));
+  const long = rest.filter(x => !short.includes(x) && x.label !== "공구상품");
+  const kv = [...tops, ...short.filter(x => x.label !== "공구상품")].map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
   const byDay = [];
   p.slots.forEach((s, si) => {
     const last = byDay[byDay.length - 1];

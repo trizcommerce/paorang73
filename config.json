@@ -6,5 +6,6 @@
   "icon_char": "뽕",
   "year": 2026,
   "per_tab": true,
-  "infer_year": "weekday"
+  "infer_year": "weekday",
+  "info_order": "commerce"
 }

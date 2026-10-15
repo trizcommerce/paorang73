@@ -61,7 +61,12 @@ def load_tabs(local):
     TABS_DIR.mkdir(exist_ok=True)
     out, old = [], 0
     by_prefix = CONFIG.get("tabs") == "year_prefix"
+    since = CONFIG.get("since")
     for name, gid in sheet_media.list_tabs(SHEET_ID):
+        if since:  # "26년 9월 콘텐츠"·"26.09 …" 처럼 연월이 붙은 탭은 since 이후만, 그 밖엔 keep_tabs 에 적힌 탭만
+            ym = TAB_YM_RE.match(name.strip("[] "))
+            if not (ym and f"20{ym[1]}-{int(ym[2]):02d}" >= since[:7]) and name.strip() not in CONFIG.get("keep_tabs", []):
+                continue
         if by_prefix:  # "26.08_…" 처럼 이름에 연월이 붙은 탭 중 올해 것만 (연월 없는 탭은 옛 탭)
             ym = TAB_YM_RE.match(name.strip("[] "))
             if not ym or 2000 + int(ym[1]) < YEAR:
@@ -277,6 +282,9 @@ def top_left_only(ws):
 
 
 # ---------------------------------------------------------------- 캘린더 탭
+EVT_LINE = re.compile(r"(.+?)\s*(D\s*[-+]\s*\d+|OPEN|오픈|마감)\s*(\([^)]*\))?\s*$", re.I)  # "철분제 D-1 (릴스)"
+
+
 def parse_calendar(ws, product_keys):
     legend, events = {}, []
     for row in ws.iter_rows(min_col=7, max_col=8):
@@ -294,10 +302,13 @@ def parse_calendar(ws, product_keys):
     for r in range(1, ws.max_row + 1):
         if r in hidden:
             continue
-        sched = re.fullmatch(r"(\d{1,2})월(?:\s*스케줄)?", text(ws.cell(r, 2).value))
-        if sched:  # "10월 스케줄", "9월 스케줄", "9월" … 처럼 월별 작은 달력이 이어진 탭
-            m_ = int(sched[1])
-            if prev_month is not None and m_ != prev_month:
+        sched = (re.fullmatch(r"()(\d{1,2})월(?:\s*스케줄)?", text(ws.cell(r, 2).value))
+                 or re.fullmatch(r"(\d{2})년\s*(\d{1,2})월", text(ws.cell(r, 2).value)))  # "26년 10월" (연도 붙은 달 제목)
+        if sched:  # "10월 스케줄", "9월 스케줄", "9월", "26년 10월" … 처럼 월별 작은 달력이 이어진 탭
+            m_ = int(sched[2])
+            if sched[1]:  # 달 제목에 연도가 있으면 그대로
+                block_year = 2000 + int(sched[1])
+            elif prev_month is not None and m_ != prev_month:
                 direction = direction or (1 if m_ > prev_month else -1)
                 if direction < 0 and m_ > prev_month:
                     block_year -= 1
@@ -351,15 +362,19 @@ def parse_calendar(ws, product_keys):
                     span = m.max_col - m.min_col + 1
                 f = fill(cell)
                 kind = "meeting" if f == MEETING_FILL else "holiday" if f == HOLIDAY_FILL else "content"
-                events.append({
-                    "date": iso(start),
-                    "end": iso(start + dt.timedelta(days=span - 1)),
-                    "text": t,
-                    "product": legend.get(f),
-                    "kind": kind,
-                    "order": rr - r,
-                    "_fill": f,
-                })
+                lines = [ln.strip() for ln in t.split("\n") if ln.strip()]
+                # "철분제 마감 (스토리)⏎바쁜언니쉐이크 D-1 (릴스)" 처럼 줄마다 다른 일정이면 나눔
+                parts = lines if len(lines) > 1 and all(EVT_LINE.match(ln) for ln in lines) else [t]
+                for k, part in enumerate(parts):
+                    events.append({
+                        "date": iso(start),
+                        "end": iso(start + dt.timedelta(days=span - 1)),
+                        "text": part,
+                        "product": legend.get(f),
+                        "kind": kind,
+                        "order": rr - r + k,
+                        "_fill": f,
+                    })
     colors = {name: "#" + rgb[2:] for rgb, name in legend.items()}
     return events, colors
 
@@ -370,7 +385,7 @@ FORMAT_RE = re.compile(r"(스토리|릴스|게시글|게시물|캐러셀|피드|
 
 
 WEEKDAYS = "월화수목금토일"
-TAB_YM_RE = re.compile(r"^\W*(\d{2})[._](\d{1,2})(?!\d)")  # 탭 이름 앞 "26.09", "★26.09", "26.08_" …
+TAB_YM_RE = re.compile(r"^\W*(\d{2})(?:[._]|년\s*)(\d{1,2})(?!\d)")  # 탭 이름 앞 "26.09", "★26.09", "26.08_" …
 WD_RE = re.compile(r"(\d{1,2})\s*(?:/|월)\s*(\d{1,2})\s*일?\s*\(?\s*([월화수목금토일])")
 
 
@@ -500,13 +515,34 @@ def kind_topic(kind, title):
     return fmt, title, []
 
 
-def parse_product(ws, colors):
+def product_blocks(ws):
+    """한 탭에 공구가 여러 개 쌓인 양식: '📍공구상품: …' 줄마다 새 공구, 그 아래 '일자 | 업로드 형태 | …' 표
+    → [(첫 행, 헤더 행, 날짜 열, 끝 행, 제품명)] (이 양식이 아니면 [])"""
+    starts = []
+    for r in range(1, ws.max_row + 1):
+        for c in (1, 2):
+            m = re.match(r"\s*📍\s*공구\s*상품\s*[:：]\s*(.+)", text(ws.cell(r, c).value))
+            if m:
+                starts.append((r, m[1].split("\n")[0].strip()))
+                break
+    blocks = []
+    for i, (top, name) in enumerate(starts):
+        end = starts[i + 1][0] - 1 if i + 1 < len(starts) else ws.max_row
+        head = next(((r, c) for r in range(top, min(end, top + 8) + 1) for c in (1, 2)
+                     if text(ws.cell(r, c).value) in DATE_HEADERS + ("일자",) and text(ws.cell(r, c + 1).value) == "업로드 형태"), None)
+        if head:
+            blocks.append((top, head[0], head[1], end, name))
+    return blocks
+
+
+def parse_product(ws, colors, blk=None):
     skip = top_left_only(ws)
+    top_row, last_row = (blk[0], blk[3]) if blk else (1, ws.max_row)
 
     def val(r, c):
         return "" if (r, c) in skip else text(ws.cell(r, c).value)
 
-    header_row, date_col = find_header(ws)
+    header_row, date_col = (blk[1], blk[2]) if blk else find_header(ws)
     head = {}
     for c in range(date_col, ws.max_column + 1):
         h = val(header_row, c)
@@ -524,17 +560,18 @@ def parse_product(ws, colors):
     else:  # 일정 | 주제 | 제작 의도 | …   또는   일정 | 노출방식 | 비주얼 설명 | 비주얼
         topic_cols = [date_col + 1]
         headers = {c: h for c, h in head.items() if c > date_col + 1}
-    expose_style = head.get(date_col + 1) == "노출방식"
+    expose_style = head.get(date_col + 1) in ("노출방식", "업로드 형태")
 
     info, period, product_line, top_lines = [], None, None, []
-    for r in range(1, header_row):
-        t = val(r, 1) or val(r, 2)
+    for r in range(top_row, header_row):
+        b_pin = bool(blk) and "📍" in val(r, 2)  # 블록 양식: A열 세로 제품 표시는 건너뛰고 B열 📍 줄을 읽음
+        t = val(r, 2) if b_pin else (val(r, 1) or val(r, 2))
         top_lines += t.split("\n")
-        c0 = 1 if val(r, 1) else 2
+        c0 = 2 if b_pin else 1 if val(r, 1) else 2
         if not t:
             continue
         pair = [(c, val(r, c)) for c in range(1, 7) if val(r, c)]
-        if expose_style and len(pair) >= 2 and len(pair[0][1]) <= 30 and "📍" not in pair[0][1]:
+        if expose_style and not b_pin and len(pair) >= 2 and len(pair[0][1]) <= 30 and "📍" not in pair[0][1]:
             label = re.sub(r"\s*\n\s*", " ", pair[0][1]).strip()
             info.append({"label": label, "text": shown(ws, r, pair[1][0], pair[1][1])})
             for c, v in pair[2:]:
@@ -580,10 +617,10 @@ def parse_product(ws, colors):
     def is_new(r, c, v):
         return bool(v) and merge_top.get((r, c), r) == r
 
-    info_images = [i for r in range(1, header_row) for i in row_images(ws, r)]
+    info_images = [i for r in range(top_row, header_row) for i in row_images(ws, r)]
     pending = [(f, header_row, (0, h)) for f, (_, h) in row_shots(ws, header_row)]  # 헤더 줄에 걸친 이미지는 첫 행 것
     slots, cur, last_a = [], None, ""
-    for r in range(header_row + 1, ws.max_row + 1):
+    for r in range(header_row + 1, last_row + 1):
         a = cell_text(r, date_col)
         tops = [cell_text(r, c) for c in topic_cols]
         b = "\n\n".join(t for t in tops if t)
@@ -652,8 +689,10 @@ def parse_product(ws, colors):
         if not expose_style or sl["title"]:
             continue
         desc = next((plain_of(v) for it in sl["items"] for k, v in it.items() if "설명" in k), "")
+        if not any("설명" in h for h in headers.values()):  # '비주얼 설명' 칸이 없는 표는 '비주얼' 칸의 "✅주제: …"
+            desc = next((plain_of(v) for it in sl["items"] for k, v in it.items() if k.startswith("비주얼")), "")
         m = re.search(r"주제[^:\n]{0,12}:\s*(.+)", desc)
-        line = (m[1] if m else next((ln for ln in desc.split("\n") if ln.strip()), "")).strip(" ✅●/")
+        line = (m[1] if m else next((ln for ln in desc.split("\n") if ln.strip()), "")).strip(" ✅●/#")
         sl["title"] = line[:60]
     if expose_style and period:  # 날짜 오타(요일 불일치 등)로 연도가 튀면 공구 기간에 가까운 해로
         open_day = dt.date.fromisoformat(period[0])
@@ -717,7 +756,7 @@ def parse_product(ws, colors):
             place_photos(ws, it)
             it.pop("__src", None)
             it.pop("__pos", None)
-    name = ws.title.strip()
+    name = blk[4] if blk else ws.title.strip()
     base = norm(name)
     color = next((c for n, c in colors.items() if norm(n) == base), None)
     if color is None:
@@ -728,7 +767,8 @@ def parse_product(ws, colors):
     display = re.sub(r"^\W*\d{2}[._]\d{1,2}[\s_]*", "", display)     # "26.09 방탄커피", "★26.09 효소" → 제품명
     display = re.sub(rf"^{re.escape(seller)}\s*[xX×]\s*", "", display)  # "방효선x헤어 2종" → "헤어 2종"
     return {
-        "id": "p" + re.sub(r"\W", "", base) + (round_m[1] if round_m else ""),
+        "id": "p" + re.sub(r"\W", "", base) + (round_m[1] if round_m else "")
+              + (period[0][5:].replace("-", "") if blk and period else ""),
         "name": re.sub(r"\s*\(?\d+차\)?", "", display).strip(),
         "round": f"{round_m[1]}차" if round_m else "",
         "fullName": product_line,
@@ -956,7 +996,8 @@ def order_info(p):
 def scan_close_times(sheets, products, product_sheets):
     """보이는 모든 탭의 모든 칸에서 공구 마감·결제창 마감 시각을 찾아 제품에 붙임.
     제품 탭 안이면 그 제품, 다른 탭(캘린더·안내 탭 등)이면 같은 칸에 적힌 제품명 → 없으면 날짜가 맞는 공구."""
-    owner_of = {id(ws): p for p, ws in zip(products, product_sheets)}
+    owner_of = {id(ws): p for p, ws in zip(products, product_sheets)
+                if sum(w is ws for w in product_sheets) == 1}
     for ws in sorted(sheets, key=lambda w: id(w) not in owner_of):  # 제품 탭에 적힌 값이 우선
         owner = owner_of.get(id(ws))
         for row in ws.iter_rows():
@@ -1010,11 +1051,16 @@ def main():
         sheets += [ws for ws in wb.worksheets if ws.sheet_state == "visible"]
     print("formats:", {k: v for k, v in sheet_media.STATS.items()})
     print("tabs:", len(sheets), "images:", sum(len(v) for cells in IMAGES.values() for v in cells.values()))
-    cal = next((ws for ws in sheets if "캘린더" in ws.title or "스케줄" in ws.title), None)
-    product_sheets = [ws for ws in sheets if ws is not cal and find_header(ws)]
+    cal = next((ws for ws in sheets if "캘린더" in ws.title or "스케줄" in ws.title or "업로드 일정" in ws.title), None)
+    product_sheets = [ws for ws in sheets if ws is not cal and (find_header(ws) or product_blocks(ws))]
     month_sheets = [ws for ws in sheets if ws not in product_sheets and re.match(r"\d{2}\.\d{2}", ws.title.strip())]
     events, colors = parse_calendar(cal, {norm(ws.title) for ws in product_sheets}) if cal else ([], {})
-    products = [parse_product(ws, colors) for ws in product_sheets]
+    jobs = []  # 한 탭에 공구가 여러 개면 공구마다 따로
+    for ws in product_sheets:
+        blocks = product_blocks(ws)
+        jobs += [(ws, b) for b in blocks] if blocks else [(ws, None)]
+    products = [parse_product(ws, colors, b) for ws, b in jobs]
+    product_sheets = [ws for ws, _ in jobs]
     for p, ws in zip(products, product_sheets):  # 이름이 같은 제품(차수 표기 없음)은 탭의 연월로 구분
         tab_ym = TAB_YM_RE.match(ws.title)
         if not p["round"] and tab_ym and sum(q["name"] == p["name"] for q in products) > 1:
@@ -1060,6 +1106,28 @@ def main():
     for p in products:
         order_info(p)
     scan_close_times(sheets, products, product_sheets)  # 공구 마감·결제창 마감 시각 (시트 어디에 적혀 있든)
+    for e in events:  # "철분제 D-1 (릴스)" 처럼 제품명 + D-n 이 적힌 하루짜리 칸 → 그 제품 (공구 기간 근처일 때만)
+        m = EVT_LINE.match(e["text"]) if not e["product"] and e["end"] == e["date"] else None
+        if not m or len(norm(m[1])) < 2:
+            continue
+        d = dt.date.fromisoformat(e["date"])
+        key = norm(m[1])
+        cands = [p for p in products if p["period"] and len(norm(p["name"])) >= 2
+                 and (norm(p["name"]) in key or key in norm(p["name"]))
+                 and -10 <= (d - dt.date.fromisoformat(p["period"][0])).days
+                 and (d - dt.date.fromisoformat(p["period"][1])).days <= 3]
+        hit = min(cands, key=lambda p: abs((d - dt.date.fromisoformat(p["period"][0])).days), default=None)
+        if hit:
+            e["product"] = hit["id"]
+            if any(sl["date"] == e["date"] for sl in hit["slots"]):
+                e["_covered"] = True  # 같은 날 제품 탭에 그 콘텐츠가 있으면 캘린더 칸은 겹치므로 뺌
+    events = [e for e in events if not e.pop("_covered", False)]
+    since = CONFIG.get("since")
+    if since:  # 이 날짜 이후 콘텐츠만
+        events = [e for e in events if e["end"] >= since]
+        products = [p for p in products if (p["period"] or ["9999"])[1] >= since or any((sl["date"] or "") >= since for sl in p["slots"])]
+        for p in products:
+            p["slots"] = [sl for sl in p["slots"] if not sl["date"] or sl["date"] >= since]
     products.sort(key=lambda p: (p["period"] or [max((s["date"] for s in p["slots"] if s["date"]), default="0000")])[0],
                   reverse=True)
     months.sort(key=lambda m: m["month"], reverse=True)

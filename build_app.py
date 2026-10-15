@@ -65,7 +65,9 @@ def load_tabs(local):
     for name, gid in sheet_media.list_tabs(SHEET_ID):
         if since:  # "26년 9월 콘텐츠"·"26.09 …" 처럼 연월이 붙은 탭은 since 이후만, 그 밖엔 keep_tabs 에 적힌 탭만
             ym = TAB_YM_RE.match(name.strip("[] "))
-            if not (ym and f"20{ym[1]}-{int(ym[2]):02d}" >= since[:7]) and name.strip() not in CONFIG.get("keep_tabs", []):
+            ym2 = re.search(r"\((20\d{2})\.(\d{1,2})\)", name)  # "효소 2종 (2026.09)"
+            tab_ym = f"20{ym[1]}-{int(ym[2]):02d}" if ym else f"{ym2[1]}-{int(ym2[2]):02d}" if ym2 else None
+            if not (tab_ym and tab_ym >= since[:7]) and name.strip() not in CONFIG.get("keep_tabs", []):
                 continue
         if by_prefix:  # "26.08_…" 처럼 이름에 연월이 붙은 탭 중 올해 것만 (연월 없는 탭은 옛 탭)
             ym = TAB_YM_RE.match(name.strip("[] "))
@@ -476,6 +478,10 @@ def find_header(ws):
         for c in (3, 4):
             if text(ws.cell(r, c).value) == "피드 주제":
                 return r, c - 2
+    if CONFIG.get("default_header"):  # 표 제목 줄을 비워 둔 탭: '9/16(수)' 로 시작하는 첫 줄 바로 위를 제목 줄로
+        for r in range(2, 16):
+            if DATE_RE.match(text(ws.cell(r, 2).value)) and FORMAT_RE.search(text(ws.cell(r, 3).value)) and not text(ws.cell(r - 1, 2).value):
+                return r - 1, 2
     return None
 
 
@@ -549,6 +555,8 @@ def parse_product(ws, colors, blk=None):
         if h:
             n = sum(1 for x in head.values() if x == h or re.fullmatch(re.escape(h) + r" \d+", x))
             head[c] = h if n == 0 else f"{h} {n + 1}"
+    if not head and CONFIG.get("default_header"):  # 제목 줄이 비어 있으면 이 셀러의 기본 표 순서로
+        head = {date_col + i: h for i, h in enumerate(CONFIG["default_header"])}
     head.setdefault(date_col, "업로드 일자")  # 날짜 칸 제목이 비어 있으면 업로드 일자형으로
     upload_style = head[date_col] == "업로드 일자"
     date_of = dater(ws.title)
@@ -596,6 +604,9 @@ def parse_product(ws, colors, blk=None):
                 period = parse_period(head_line, date_of)
             if "공구상품" in head_line:
                 product_line = head_line.split(":", 1)[-1].strip()
+            if not body and ":" not in head_line and re.search(r"\S\s*[xX×]\s*\S", head_line):
+                product_line = product_line or head_line  # "📍 에나스쿨 X 츄어블 철분제" → 제품 전체 이름
+                continue
             if ":" in head_line and not body:
                 k, v = head_line.split(":", 1)
                 info.append({"label": k.strip(), "text": shown(ws, r, c0, v.strip())})

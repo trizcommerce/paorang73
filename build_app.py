@@ -479,8 +479,8 @@ def find_header(ws):
             if text(ws.cell(r, c).value) == "피드 주제":
                 return r, c - 2
     if CONFIG.get("default_header"):  # 표 제목 줄을 비워 둔 탭: '9/16(수)' 로 시작하는 첫 줄 바로 위를 제목 줄로
-        for r in range(2, 16):
-            if DATE_RE.match(text(ws.cell(r, 2).value)) and FORMAT_RE.search(text(ws.cell(r, 3).value)) and not text(ws.cell(r - 1, 2).value):
+        for r in range(2, 16):  # 제목 줄이 아예 없으면 첫 콘텐츠 줄 바로 위 줄을 제목 줄 자리로 (그 줄은 정보로도 읽음)
+            if DATE_RE.search(text(ws.cell(r, 2).value)) and FORMAT_RE.search(text(ws.cell(r, 3).value)):
                 return r - 1, 2
     return None
 
@@ -555,7 +555,8 @@ def parse_product(ws, colors, blk=None):
         if h:
             n = sum(1 for x in head.values() if x == h or re.fullmatch(re.escape(h) + r" \d+", x))
             head[c] = h if n == 0 else f"{h} {n + 1}"
-    if not head and CONFIG.get("default_header"):  # 제목 줄이 비어 있으면 이 셀러의 기본 표 순서로
+    virtual = bool(CONFIG.get("default_header")) and not any(h in CONFIG["default_header"] for h in head.values())
+    if virtual:  # 제목 줄이 비어 있거나 없으면 이 셀러의 기본 표 순서로
         head = {date_col + i: h for i, h in enumerate(CONFIG["default_header"])}
     head.setdefault(date_col, "업로드 일자")  # 날짜 칸 제목이 비어 있으면 업로드 일자형으로
     upload_style = head[date_col] == "업로드 일자"
@@ -571,7 +572,7 @@ def parse_product(ws, colors, blk=None):
     expose_style = head.get(date_col + 1) in ("노출방식", "업로드 형태")
 
     info, period, product_line, top_lines = [], None, None, []
-    for r in range(top_row, header_row):
+    for r in range(top_row, header_row + (1 if virtual else 0)):
         b_pin = bool(blk) and "📍" in val(r, 2)  # 블록 양식: A열 세로 제품 표시는 건너뛰고 B열 📍 줄을 읽음
         t = val(r, 2) if b_pin else (val(r, 1) or val(r, 2))
         top_lines += t.split("\n")
@@ -628,7 +629,7 @@ def parse_product(ws, colors, blk=None):
     def is_new(r, c, v):
         return bool(v) and merge_top.get((r, c), r) == r
 
-    info_images = [i for r in range(top_row, header_row) for i in row_images(ws, r)]
+    info_images = [i for r in range(top_row, header_row + (1 if virtual else 0)) for i in row_images(ws, r)]
     pending = [(f, header_row, (0, h)) for f, (_, h) in row_shots(ws, header_row)]  # 헤더 줄에 걸친 이미지는 첫 행 것
     slots, cur, last_a = [], None, ""
     for r in range(header_row + 1, last_row + 1):
@@ -1073,7 +1074,7 @@ def main():
     products = [parse_product(ws, colors, b) for ws, b in jobs]
     product_sheets = [ws for ws, _ in jobs]
     for p, ws in zip(products, product_sheets):  # 이름이 같은 제품(차수 표기 없음)은 탭의 연월로 구분
-        tab_ym = TAB_YM_RE.match(ws.title)
+        tab_ym = TAB_YM_RE.match(ws.title) or re.search(r"\(20(\d{2})\.(\d{1,2})\)", ws.title)  # "26.09 …" 또는 "… (2026.07)"
         if not p["round"] and tab_ym and sum(q["name"] == p["name"] for q in products) > 1:
             p["round"] = f"{tab_ym[1]}.{int(tab_ym[2]):02d}"
     months = [parse_month(ws) for ws in month_sheets]

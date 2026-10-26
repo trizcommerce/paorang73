@@ -85,10 +85,12 @@ a{color:var(--accent)}
 .day.today .n{background:var(--today);color:var(--accent-ink)!important}
 .day.sel{background:var(--accent-soft)}
 .marks{display:flex;gap:3px;margin-top:4px;height:7px;align-items:center;position:relative;z-index:1}
-.mk{width:7px;height:7px;border-radius:50%;background:var(--c,var(--muted))}
-.mk.reel{border-radius:2px}
-.mk.post{border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1.6px var(--c,var(--muted))}
-.mk.story{width:5px;height:5px}
+.mk{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:var(--c,var(--muted))}
+.mk.feed{border-radius:2px}
+.mk.other{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
+.mk-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;padding:8px 4px 4px;font-size:11px;color:var(--muted)}
+.mk-legend span{display:inline-flex;align-items:center;gap:5px}
+.mk-legend .mk{--c:var(--muted)}
 .mk.more{width:auto;height:auto;background:none;font-size:9px;line-height:1;color:var(--muted)}
 .pbar{align-self:end;height:14px;margin-bottom:calc(2px + var(--lane,0)*16px);padding:0 5px;background:var(--c);color:var(--chip-ink);font-style:normal;font-size:10px;font-weight:600;line-height:14px;letter-spacing:-.02em;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;position:relative;z-index:2;min-width:0}
 .pbar.s{margin-left:3px;border-top-left-radius:5px;border-bottom-left-radius:5px}
@@ -280,6 +282,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
       <div class="cal-card" id="cal-card">
         <div class="wk"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
         <div class="grid" id="cal-grid"></div>
+        <div class="mk-legend" aria-hidden="true"><span><i class="mk feed"></i>커머스 피드(릴스, 캐러셀)</span><span><i class="mk story"></i>커머스 스토리</span><span><i class="mk other"></i>그 외 일정</span></div>
       </div>
       <div class="agenda" id="agenda"></div>
     </div>
@@ -604,7 +607,8 @@ function renderCal() {
     if (k === TODAY) cls.push("today");
     if (k === sel) cls.push("sel");
     const marks = list.filter(e => !e.holiday);
-    const shown = marks.slice(0, 4).map(e => `<i class="mk ${e.fmt}" style="--c:${e.pid ? colorOf(e.pid) : "var(--muted)"}"></i>`).join("");
+    const shape = e => !e.pid ? "other" : e.fmt === "story" ? "story" : "feed"; // 제품 콘텐츠 = 커머스
+    const shown = marks.slice(0, 4).map(e => `<i class="mk ${shape(e)}" style="--c:${e.pid ? colorOf(e.pid) : "var(--muted)"}"></i>`).join("");
     const more = marks.length > 4 ? `<i class="mk more">+${marks.length - 4}</i>` : "";
     const open = sales.some(r => r.s === k) ? `<span class="open-tag">OPEN</span>` : "";
     const on = spans.filter(r => r.s <= k && k <= r.e).map(r => `${r.label} ${mdS(r.s)}–${mdS(r.e)}`).join(", ");

@@ -225,6 +225,61 @@ def plain_cell(v):
     return re.sub(r"⟦([^|⟧]*)\|[^⟧]*⟧", r"\1", re.sub(r"⟪[^⟫]*⟫", "", str(v)))
 
 
+_ROW_H, _MULTI = {}, {}
+
+
+def row_height_pt(ws, r):
+    """행 높이(pt): 시트에 적힌 높이, 없으면('자동') 가장 긴 글 칸의 추정 높이, 숨긴 행은 0"""
+    key = (id(ws), r)
+    if key in _ROW_H:
+        return _ROW_H[key]
+    if id(ws) not in _MULTI:  # 여러 행에 걸친 병합 칸은 한 행 높이를 정하지 않음
+        _MULTI[id(ws)] = {(rr, c) for m in ws.merged_cells.ranges if m.max_row > m.min_row
+                          for rr in range(m.min_row, m.max_row + 1) for c in range(m.min_col, m.max_col + 1)}
+    rd = ws.row_dimensions[r]
+    default = float(ws.sheet_format.defaultRowHeight or 15.75)
+    if rd.hidden:
+        h = 0.0
+    elif rd.height is not None:
+        h = float(rd.height)
+    else:
+        est = 0.0
+        for c in range(1, ws.max_column + 1):
+            v = ws.cell(r, c).value
+            if v is None or isinstance(v, (int, float, dt.datetime, dt.date)) or (r, c) in _MULTI[id(ws)]:
+                continue
+            t = plain_cell(v)
+            if t.strip():
+                est = max(est, est_layout(t, cell_width_px(ws, r, c), float(ws.cell(r, c).font.sz or 10))[1] + 4)
+        h = max(default, est)
+    _ROW_H[key] = h
+    return h
+
+
+def reanchor_images(ws):
+    """사진이 칸을 벗어나 다음 행까지 걸쳐 있으면, 사진이 가장 많이 걸친 행으로 옮김"""
+    name = ws.title.strip()
+    cells = IMAGES.get(name)
+    if not cells:
+        return 0
+    out, moved = {}, 0
+    for (r, c), lst in sorted(cells.items()):
+        for f, off, h, col, coff in lst:
+            top, bot = off / 12700, (off + h) / 12700
+            best, best_ov, best_y, y, rr = r, -1.0, 0.0, 0.0, r
+            while y < bot and rr <= ws.max_row + 60:
+                rh = row_height_pt(ws, rr)
+                ov = min(bot, y + rh) - max(top, y)
+                if ov > best_ov + 0.5:
+                    best, best_ov, best_y = rr, ov, y
+                y, rr = y + rh, rr + 1
+            if best != r:
+                moved += 1
+            out.setdefault((best, c), []).append((f, int(round((top - best_y) * 12700)), h, col, coff))
+    IMAGES[name] = out
+    return moved
+
+
 def place_photos(ws, item):
     """사진이 시트에서 놓인 높이로, 옆 칸 번호 항목(#1, #2 …) 중 어디에 붙는지 계산.
     결과: item["__field"] = 짝지을 칸, item["__place"] = 사진별 항목 번호(-1 = 첫 항목 앞)"""
@@ -243,11 +298,7 @@ def place_photos(ws, item):
     width_px = cell_width_px(ws, row, col)
     font_pt = float(cell.font.sz or 10)
     tops, text_h = est_layout(plain_cell(text), width_px, font_pt)
-    heights = [ws.row_dimensions[r].height for r in range(row, (merged.max_row if merged else row) + 1)]
-    cell_h = sum(heights) if heights and all(heights) else None
-    last_row = max(r for r, _ in pos)
-    if cell_h is None or any(ws.row_dimensions[x].height is None for x in range(row, last_row + 1)):
-        return  # 행 높이가 자동이면 시트에 적힌 사진 위치를 믿을 수 없음 → 끝에 시트 순서대로
+    cell_h = sum(row_height_pt(ws, r) for r in range(row, (merged.max_row if merged else row) + 1))  # 자동 높이는 추정
     if not merged:  # 행 높이는 가장 긴 글 칸에 맞춰져 있으므로, 그 칸 추정 높이로 줄 간격을 보정
         tallest = max((est_layout(plain_cell(ws.cell(row, c).value), cell_width_px(ws, row, c),
                                   float(ws.cell(row, c).font.sz or 10))[1]
@@ -258,15 +309,15 @@ def place_photos(ws, item):
     valign = (cell.alignment.vertical or "bottom") if cell_h and cell_h > text_h else "top"
     offset = 0 if valign == "top" else (cell_h - text_h) / (2 if valign == "center" else 1)
     starts = [offset + tops[i] for i in numbered_starts(text)]
+    marks = ([(-1, offset)] if starts and starts[0] - offset > 6 else []) + list(enumerate(starts))
     place = []
     for r, (off, h) in pos:
         if r < row:
             place.append(-1)
             continue
-        above = sum((ws.row_dimensions[x].height or (text_h + offset if x == row else 15.75)) for x in range(row, r))
-        y_img = above + (off + PHOTO_ANCHOR * h) / 12700
-        k = max([i for i, s in enumerate(starts) if s <= y_img], default=-1)
-        place.append(k)
+        above = sum(row_height_pt(ws, x) for x in range(row, r))
+        y_top = above + off / 12700  # 사진 윗부분 높이 → 가장 가까운 항목 시작 줄
+        place.append(min(marks, key=lambda kv: abs(kv[1] - y_top))[0] if marks else -1)
     item["__field"], item["__place"] = field, place
 
 
@@ -1061,7 +1112,8 @@ def main():
         visible = {ws.title.strip() for ws in wb.worksheets if ws.sheet_state == "visible"}
         IMAGES.update(sheet_media.extract_images(path, MEDIA, only=visible))
         sheets += [ws for ws in wb.worksheets if ws.sheet_state == "visible"]
-    print("formats:", {k: v for k, v in sheet_media.STATS.items()})
+    moved = sum(reanchor_images(ws) for ws in sheets)  # 칸을 벗어난 사진 → 가장 많이 걸친 행으로
+    print("formats:", {k: v for k, v in sheet_media.STATS.items()}, "photos moved to the row they mostly cover:", moved)
     print("tabs:", len(sheets), "images:", sum(len(v) for cells in IMAGES.values() for v in cells.values()))
     cal = next((ws for ws in sheets if "캘린더" in ws.title or "스케줄" in ws.title or "업로드 일정" in ws.title), None)
     product_sheets = [ws for ws in sheets if ws is not cal and (find_header(ws) or product_blocks(ws))]

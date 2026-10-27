@@ -84,9 +84,10 @@ a{color:var(--accent)}
 .day.sat .n{color:var(--sat)} .day.sun .n,.day.hol .n{color:var(--sun)}
 .day.today .n{background:var(--today);color:var(--accent-ink)!important}
 .day.sel{background:var(--accent-soft)}
-.marks{display:flex;gap:3px;margin-top:4px;height:7px;align-items:center;position:relative;z-index:1}
-.mk{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:var(--c,var(--muted))}
-.mk.feed{border-radius:2px}
+.marks{display:flex;gap:3px;margin-top:4px;height:8px;align-items:center;position:relative;z-index:1}
+.mk{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted))}
+.mk.feed{width:11px;height:11px;margin:-1.5px -1px;border-radius:0;clip-path:polygon(50% 0,61.8% 35.4%,100% 38.2%,69.1% 61.8%,79.4% 100%,50% 76.4%,20.6% 100%,30.9% 61.8%,0 38.2%,38.2% 35.4%)}
+.mk.story{border-radius:1.5px}
 .mk.other{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .mk-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;padding:8px 4px 4px;font-size:11px;color:var(--muted)}
 .mk-legend span{display:inline-flex;align-items:center;gap:5px}

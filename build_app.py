@@ -1208,6 +1208,7 @@ def main():
         html = TEMPLATE.read_text(encoding="utf-8")
         payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
         html = html.replace("__APP_NAME__", CONFIG["app_name"]).replace("__SELLER__", CONFIG["seller"])
+        html = html.replace("__UPCOMING__", str(CONFIG.get("upcoming_days", 3)))
         OUT.write_text(html.replace("/*__DATA__*/null", payload), encoding="utf-8")
         print("built", OUT)
     print(f"events={len(events)} products={len(products)} months={len(months)}")

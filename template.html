@@ -446,6 +446,9 @@ DATA.events.forEach(ev => {
   const match = list.find(e => e.src === "slot" && !e.matched && (e.pid === ev.product || !ev.product) &&
     (isStory ? e.fmt === "story" : similar(e.title, ev.text)));
   if (match) { match.matched = true; return; }
+  // 제목을 캘린더 칸 두 줄에 나눠 적은 경우("지금까지 세수 방법이" / "잘못됐다면?"): 같은 날 콘텐츠 제목의 일부면 따로 띄우지 않음
+  const part = normT(ev.text);
+  if (!isStory && part.length >= 2 && list.some(e => e.src === "slot" && (e.pid === ev.product || !ev.product) && normT(stripFmt(e.title)).includes(part))) return;
   if (!ev.product && /커머스|공구/.test(ev.text)) {
     const hit = DATA.products.find(p => p.slots.some(s => s.title && similar(s.title, ev.text)));
     if (hit) ev.product = hit.id;

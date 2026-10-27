@@ -747,12 +747,24 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet()
 })();
 
 /* ---------------- 휴대폰 캘린더 구독 (알림) ---------------- */
-function openAlarmSheet() {
-  const ics = new URL("calendar.ics", location.href).href;
+const ALARM_CHOICES = [ // 알림 시점: [구독 파일, 버튼 문구, 설명, 구글 캘린더 기본 알림]
+  ["calendar-3d.ics", "3일 전에 알려드릴게요", "업로드 <b>3일 전 오전 9시</b>", "'3일 전 오전 9시'"],
+  ["calendar-1d.ics", "하루 전에 알려드릴게요", "업로드 <b>하루 전 오전 9시</b>", "'1일 전 오전 9시'"],
+  ["calendar.ics", "당일 오전에 알려드릴게요", "업로드 <b>당일 오전 9시</b>", "'당일 오전 9시'"],
+];
+function openAlarmSheet() { // 먼저 알림 받을 시점을 고르게 함
+  const body = `<div class="field"><div class="tx">업로드 일정을 언제 알려드릴까요?</div>
+    ${ALARM_CHOICES.map((c, i) => `<button type="button" class="cta${i ? " alt" : ""}" data-alarm="${i}">${c[1]}</button>`).join("")}</div>`;
+  openSheet(`<span class="pill ghost">알림 받기</span>`, "휴대폰 캘린더로 알림 받기", body);
+  $("#sheet-body").querySelectorAll("[data-alarm]").forEach(b => b.onclick = () => openAlarmSubscribe(+b.dataset.alarm));
+}
+function openAlarmSubscribe(choice) {
+  const [file, , when, googleWhen] = ALARM_CHOICES[choice];
+  const ics = new URL(file, location.href).href;
   const webcal = ics.replace(/^https?:/, "webcal:");
   const google = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal);
   const body = `
-    <div class="field"><div class="tx">업로드 일정이 휴대폰 캘린더에 들어가고, <b>업로드 당일 오전 9시</b>에 알림이 와요. 시트가 바뀌면 캘린더도 자동으로 바뀝니다.</div>
+    <div class="field"><div class="tx">업로드 일정이 휴대폰 캘린더에 들어가고, ${when}에 알림이 와요. 시트가 바뀌면 캘린더도 자동으로 바뀝니다.</div>
       <a class="cta" href="${escRaw(webcal)}">아이폰 캘린더에 추가</a>
       <a class="cta alt" href="${escRaw(google)}" target="_blank" rel="noopener">구글 캘린더에 추가</a></div>
     <div class="field"><div class="lb">아이폰</div><ol class="steps">
@@ -761,12 +773,14 @@ function openAlarmSheet() {
       <li>같은 화면의 <b>새로 고침</b>을 '매시간'으로 두면 시트 변경이 빨리 반영돼요</li></ol></div>
     <div class="field"><div class="lb">안드로이드 · 구글 캘린더</div><ol class="steps">
       <li>위 <b>구글 캘린더에 추가</b> → 구글 계정으로 <b>추가</b></li>
-      <li>구글 캘린더는 구독 일정에 알림을 따로 설정해야 해요: 캘린더 설정에서 이 캘린더의 <b>기본 알림</b>을 '당일 오전 9시'로</li>
+      <li>구글 캘린더는 구독 일정에 알림을 따로 설정해야 해요: 캘린더 설정에서 이 캘린더의 <b>기본 알림</b>(종일 일정)을 ${googleWhen}로</li>
       <li>구글 캘린더는 시트 변경이 반영되기까지 몇 시간 ~ 하루 걸릴 수 있어요</li></ol></div>
     <div class="field"><div class="lb">직접 추가할 때 쓰는 주소</div>
       <span class="url-box" id="ics-url">${escRaw(ics)}</span>
-      <button type="button" class="cta alt" id="copy-ics">주소 복사</button></div>`;
-  openSheet(`<span class="pill ghost">알림 받기</span>`, "휴대폰 캘린더로 알림 받기", body);
+      <button type="button" class="cta alt" id="copy-ics">주소 복사</button></div>
+    <div class="field"><button type="button" class="pill line" id="alarm-back">← 알림 시점 다시 고르기</button></div>`;
+  openSheet(`<span class="pill ghost">알림 받기</span>`, ALARM_CHOICES[choice][1], body);
+  $("#alarm-back").onclick = openAlarmSheet;
   $("#copy-ics").onclick = async () => {
     try { await navigator.clipboard.writeText(ics); $("#copy-ics").textContent = "복사했어요"; }
     catch (e) { const r = document.createRange(); r.selectNodeContents($("#ics-url")); getSelection().removeAllRanges(); getSelection().addRange(r); $("#copy-ics").textContent = "주소를 길게 눌러 복사하세요"; }

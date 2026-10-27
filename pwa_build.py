@@ -138,8 +138,10 @@ def main():
         else:
             icon(n, PWA / f"icon-{n}.png")
     data = json.loads(DATA.read_text(encoding="utf-8"))
-    # 휴대폰 캘린더 구독용 파일 (당일 오전 9시 알림)
-    (PWA / "calendar.ics").write_text(cal_feed.build_ics(data, CONFIG, cal_feed.site_url()), encoding="utf-8", newline="")
+    # 휴대폰 캘린더 구독용 파일: 알림 시점(당일 오전 / 하루 전 / 3일 전)마다 하나씩
+    for fname, alarm_at, suffix in cal_feed.ALARMS:
+        (PWA / fname).write_text(cal_feed.build_ics(data, CONFIG, cal_feed.site_url(), alarm_at, suffix),
+                                 encoding="utf-8", newline="")
     # 시트 내용이 바뀌었는지 비교하는 용도 (업데이트 시각은 제외하고 해시)
     data.pop("updated", None)
     # 앱 코드가 바뀌어도 새로 배포되도록 화면·캘린더 코드도 함께 해시

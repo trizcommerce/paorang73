@@ -11,6 +11,10 @@ import re
 from collections import defaultdict
 
 ALARM_AT = "PT9H"  # 하루 일정 시작(0시)부터 9시간 뒤 = 오전 9시
+# 알림 시점별 구독 파일: (파일 이름, 알림 시각, 캘린더 이름 뒤에 붙일 말)
+ALARMS = [("calendar.ics", "PT9H", ""),                    # 당일 오전 9시 (예전부터 쓰던 주소)
+          ("calendar-1d.ics", "-PT15H", " (하루 전 알림)"),   # 전날 오전 9시
+          ("calendar-3d.ics", "-P2DT15H", " (3일 전 알림)")]  # 3일 전 오전 9시
 FMT = [("광고", "광고"), ("릴스", "릴스"), ("캐러셀|게시글|게시물|피드", "피드"), ("무물", "무물"),
        ("라이브|라방", "라방"), ("자율|자유|일상", "자유"), ("스토리", "스토리")]
 
@@ -62,7 +66,7 @@ def site_url():
     return ""
 
 
-def build_ics(data, config, url=""):
+def build_ics(data, config, url="", alarm_at=ALARM_AT, name_suffix=""):
     seller = config.get("seller", "")
     items = defaultdict(list)  # 날짜 → [(스토리 여부, 한 줄)]
 
@@ -106,7 +110,7 @@ def build_ics(data, config, url=""):
     uid_base = re.sub(r"\W", "", config.get("sheet_id", "cal"))[:12]
     lines = [
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TRIZ//seller-content-calendar//KO", "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH", f"X-WR-CALNAME:{_esc(config.get('app_name', '콘텐츠 캘린더'))}",
+        "METHOD:PUBLISH", f"X-WR-CALNAME:{_esc(config.get('app_name', '콘텐츠 캘린더') + name_suffix)}",
         "X-WR-TIMEZONE:Asia/Seoul", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
     ]
 
@@ -120,7 +124,7 @@ def build_ics(data, config, url=""):
             lines.append(f"URL:{url}")
         if alarm:
             lines.extend(["BEGIN:VALARM", "ACTION:DISPLAY", f"DESCRIPTION:{_esc(summary)}",
-                          f"TRIGGER;RELATED=START:{ALARM_AT}", "END:VALARM"])
+                          f"TRIGGER;RELATED=START:{alarm_at}", "END:VALARM"])
         lines.append("END:VEVENT")
 
     for date in sorted(items):

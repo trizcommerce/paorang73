@@ -638,7 +638,8 @@ function entryHTML(e, idx, opts = {}) {
   if (e.src === "slot") {
     const notes = e.slot.notes.join(" · ");
     const first = e.slot.items.map(it => Object.entries(it).find(([k]) => !k.startsWith("__") && !k.includes("기한"))?.[1]).find(Boolean) || "";
-    prev = notes || first;
+    prev = notes.length > 24 ? notes : first || notes; // 짧은 메모는 아래 표시줄에
+    if (notes && prev !== notes) meta.push(`<span>${esc(notes)}</span>`);
   }
   const label = e.holiday ? "휴일" : FMT[e.fmt];
   return `<button type="button" class="entry" data-idx="${idx}">

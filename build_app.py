@@ -569,7 +569,8 @@ def kind_topic(kind, title):
     title = " ".join(l.strip() for l in title.split("\n") if l.strip())
     if not title and fmt not in ("스토리",) and kind and not FORMAT_RE.search(kind):
         title = kind
-    return fmt, title, []
+    notes = [ln.strip(" *＊+()") for ln in kind.split("\n") if re.match(r"\s*[+*＊(]", ln)]  # "+ 필수 스토리"
+    return fmt, title, [n for n in notes if n]
 
 
 def product_blocks(ws):
@@ -623,20 +624,50 @@ def parse_product(ws, colors, blk=None):
     expose_style = head.get(date_col + 1) in ("노출방식", "업로드 형태")
 
     info, period, product_line, top_lines = [], None, None, []
+    hidden_cols = {c for c in range(1, ws.max_column + 1)
+                   if ws.column_dimensions[openpyxl.utils.get_column_letter(c)].hidden}
+
+    def extras(r, used):
+        """정보 줄의 나머지 칸: 짧은 제목 + 바로 옆 내용이면 한 쌍으로, 아니면 '참고'로"""
+        rest = [(c, val(r, c)) for c in range(1, ws.max_column + 1)
+                if val(r, c) and c not in used and c not in hidden_cols]
+        i = 0
+        while i < len(rest):
+            c, v = rest[i]
+            nxt = rest[i + 1] if i + 1 < len(rest) else None
+            if nxt and nxt[0] == c + 1 and len(v) <= 30 and "\n" not in v.strip():
+                info.append({"label": v.strip(), "text": shown(ws, r, nxt[0], nxt[1])})
+                i += 2
+            else:
+                info.append({"label": "참고", "text": shown(ws, r, c, v)})
+                i += 1
+
+    consumed = set()
     for r in range(top_row, header_row + (1 if virtual else 0)):
+        if ws.row_dimensions[r].hidden or r in consumed:  # 시트에서 숨긴 행은 앱에도 넣지 않음
+            continue
+        cells = [(c, val(r, c)) for c in range(1, ws.max_column + 1) if val(r, c) and c not in hidden_cols]
+        if (not blk and not expose_style and len(cells) >= 2 and r + 1 < header_row and all(len(v) <= 40 for _, v in cells)
+                and sum(bool(val(r + 1, c)) for c, _ in cells) >= 2):  # 윗줄 제목 + 아랫줄 내용 ("셀러 / 제품 | 이벤트 …")
+            for c, lab in cells:
+                v = val(r + 1, c)
+                if v:
+                    info.append({"label": re.sub(r"\s*\n\s*", " ", lab).strip(), "text": shown(ws, r + 1, c, v)})
+                    top_lines += v.split("\n")
+            consumed.add(r + 1)
+            continue
         b_pin = bool(blk) and "📍" in val(r, 2)  # 블록 양식: A열 세로 제품 표시는 건너뛰고 B열 📍 줄을 읽음
         t = val(r, 2) if b_pin else (val(r, 1) or val(r, 2))
         top_lines += t.split("\n")
         c0 = 2 if b_pin else 1 if val(r, 1) else 2
         if not t:
+            extras(r, set())
             continue
-        pair = [(c, val(r, c)) for c in range(1, 7) if val(r, c)]
+        pair = [(c, val(r, c)) for c in range(1, ws.max_column + 1) if val(r, c)]
         if expose_style and not b_pin and len(pair) >= 2 and len(pair[0][1]) <= 30 and "📍" not in pair[0][1]:
             label = re.sub(r"\s*\n\s*", " ", pair[0][1]).strip()
             info.append({"label": label, "text": shown(ws, r, pair[1][0], pair[1][1])})
-            for c, v in pair[2:]:
-                if len(v) > 40:
-                    info.append({"label": "참고", "text": shown(ws, r, c, v)})
+            extras(r, {pair[0][0], pair[1][0]})
             top_lines += pair[1][1].split("\n")
             if "공구" in label and ("진행" in label or "일정" in label):
                 period = period or parse_period(pair[1][1], date_of)
@@ -647,6 +678,7 @@ def parse_product(ws, colors, blk=None):
             period = period or parse_period(t, date_of)
             if len(t.strip()) > 4:
                 info.append({"label": "공구", "text": shown(ws, r, c0, t)})
+            extras(r, {c0})
             continue
         for block in re.split(r"\n\s*\n(?=📍)", t):
             block = block.strip()
@@ -666,6 +698,7 @@ def parse_product(ws, colors, blk=None):
                 label, _, rest = head_line.partition(":")
                 body = (rest.strip() + "\n" + body).strip() if rest.strip() else body
                 info.append({"label": label.strip(), "text": shown(ws, r, c0, body.strip())})
+        extras(r, {1, c0} if b_pin else {c0})
 
     # 날짜·주제 칸은 병합이 많아 값 전파
     merge_top = {}
@@ -680,10 +713,13 @@ def parse_product(ws, colors, blk=None):
     def is_new(r, c, v):
         return bool(v) and merge_top.get((r, c), r) == r
 
-    info_images = [i for r in range(top_row, header_row + (1 if virtual else 0)) for i in row_images(ws, r)]
+    info_images = [i for r in range(top_row, header_row + (1 if virtual else 0)) if not ws.row_dimensions[r].hidden
+                   for i in row_images(ws, r)]
     pending = [(f, header_row, (0, h)) for f, (_, h) in row_shots(ws, header_row)]  # 헤더 줄에 걸친 이미지는 첫 행 것
     slots, cur, last_a = [], None, ""
     for r in range(header_row + 1, last_row + 1):
+        if ws.row_dimensions[r].hidden:  # 시트에서 숨긴 행은 앱에도 넣지 않음
+            continue
         a = cell_text(r, date_col)
         tops = [cell_text(r, c) for c in topic_cols]
         b = "\n\n".join(t for t in tops if t)
@@ -693,6 +729,15 @@ def parse_product(ws, colors, blk=None):
             if v and v != "-":
                 fields[h] = shown(ws, r, c, v)
                 srcs[h] = (r, c)
+        for c in range(date_col + 1, ws.max_column + 1):  # 표 제목이 없는 열: 바로 왼쪽 제목에 이어 붙이고, 아니면 '참고'
+            if c in head or c in topic_cols or c in hidden_cols:
+                continue
+            v = val(r, c)
+            if v and v != "-":
+                h = headers.get(c - 1, "참고")
+                t_ = shown(ws, r, c, v)
+                fields[h] = f"{fields[h]}\n\n{t_}" if h in fields else t_
+                srcs.setdefault(h, (r, c))
         shots = [(f, r, off) for f, off in row_shots(ws, r)]
         imgs = pending + shots
         pending = []
@@ -715,6 +760,10 @@ def parse_product(ws, colors, blk=None):
             elif expose_style:
                 found = FORMAT_RE.search(b)
                 fmt, title, notes = (found[1] if found else "기타"), "", []
+                for ln in b.split("\n"):  # 형식 칸의 메모: *알림설정*, (재탕), + 링크 삽입 …
+                    x = FORMAT_RE.sub("", re.sub(r"D\s*[-+]\s*\d+|OPEN|오픈|마감", "", ln, flags=re.I)).strip(" *＊★()+[]")
+                    if x:
+                        notes.append(x)
             else:
                 fmt, title, notes = split_topic(b)
             cur = {
@@ -757,7 +806,7 @@ def parse_product(ws, colors, blk=None):
         m = re.search(r"주제[^:\n]{0,12}:\s*(.+)", desc)
         line = (m[1] if m else next((ln for ln in desc.split("\n") if ln.strip()), "")).strip(" ✅●/#")
         sl["title"] = line[:60]
-    if expose_style and period:  # 날짜 오타(요일 불일치 등)로 연도가 튀면 공구 기간에 가까운 해로
+    if period:  # 날짜 오타(요일 불일치 등)로 연도가 튀면 공구 기간에 가까운 해로
         open_day = dt.date.fromisoformat(period[0])
         for sl in slots:
             if sl["date"]:

@@ -711,10 +711,15 @@ const isFresh = it => !(it.src || []).some(k => k === "trend" || k === "search")
 /* 추천은 '속 내용이 충분한' 기획만: 기획 의도·타깃·목표 지표·셀러 이미지·후킹(2개+)·상황 예시(4컷+)·촬영 가이드·스토리 연계·행동 유도 문구가 모두 있어야 함 */
 const IDEA_REQ = ["intent", "target", "kpi", "image", "shoot", "story", "cta"];
 const isFull = it => IDEA_REQ.every(k => it[k]) && (it.hooks || []).length >= 2 && (it.scene || it.steps || []).length >= 4;
+/* 셀러별 규칙(ideas.json): avoid = 이 셀러에게 기획하지 않을 주제어, srcBoost = 출처별 가중치(예: 팔로워 관심·성과 검증 위주),
+   genShare = 시즌 자동 기획이 나올 비율, combos = 레시피 대신 '음식 조합'으로 보여줄 제철 음식별 조합 예시 */
+const AVOID = IDEAS?.avoid?.length ? new RegExp(IDEAS.avoid.join("|")) : null;
+const avoided = it => AVOID && AVOID.test([it.t, ...(it.hooks || []), it.intent || ""].join(" "));
+const srcW = it => (it.src || []).reduce((m, k) => m * (IDEAS.srcBoost?.[k] ?? 1), 1);
 const IDEA_POOL = !IDEAS ? [] : [
-  ...IDEAS.items.filter(isFresh).map(it => ({...it, w: it.src?.length ? 4 : it.ref ? 3 : 2})),
+  ...IDEAS.items.filter(isFresh).map(it => ({...it, w: (it.src?.length ? 4 : it.ref ? 3 : 2) * srcW(it)})),
   ...seasonPool(),
-].filter(isFull);
+].filter(it => isFull(it) && !avoided(it));
 function josa(w, withF, noF) { // 받침에 따라 조사 고르기 (로는 ㄹ받침도 '로')
   const c = w.replace(/[^가-힣]+$/, "").slice(-1).charCodeAt(0) - 0xAC00;
   if (c < 0 || c > 11171) return noF;
@@ -729,13 +734,14 @@ function seasonPool() { // 월별 시즌 키워드(제철 음식·계절 루틴�
   for (const [m, list] of Object.entries(months)) for (const kw of list) {
     if (skip.has(kw.k) || (fit.size && !kw.tags.some(x => fit.has(x)))) continue;
     for (const a of IDEAS.seasonAngles[kw.type] || []) {
+      const ex = IDEAS.combos?.[kw.k] || (IDEAS.noMake ? [] : kw.make || []); // 조합형 셀러는 레시피 대신 조합 예시
       const needM = a.t.includes("{m}");
-      if (needM && !kw.make?.length) continue;
-      for (const mk of needM ? kw.make : [kw.make?.[0] || ""]) {
+      if (needM && !ex.length) continue;
+      for (const mk of needM ? ex : [ex[0] || ""]) {
         const fill = x => x.replaceAll("{k}{로}", kw.k + josa(kw.k, "으로", "로")).replaceAll("{k}{은}", kw.k + josa(kw.k, "은", "는"))
           .replaceAll("{k}", kw.k).replaceAll("{m}", mk).replace(/ — 예: $/, "");
         const o = {g: a.g, f: a.f, t: fill(a.t), hooks: a.hooks.map(fill), scene: a.steps.map(fill), why: a.why,
-          months: [+m], src: ["season"], tags: kw.tags, make: kw.make, examples: kw.make, season: kw.k, gen: true, w: 2};
+          months: [+m], src: ["season"], tags: kw.tags, make: IDEAS.combos || IDEAS.noMake ? null : kw.make, examples: ex.length ? ex : null, season: kw.k, gen: true, w: 2 * srcW({src: ["season"]})};
         IDEA_REQ.forEach(k => { if (a[k]) o[k] = fill(a[k]); });
         out.push(o);
       }
@@ -798,7 +804,7 @@ function pickIdeas(k, avoid = []) {
     }
     // 손으로 자세히 쓴 기획 70% → 이달 시즌 키워드 기획 30%
     const tiers = [fresh.filter(x => !x.it.gen), fresh.filter(x => x.it.gen)];
-    const odds = [0.7, 0.3].map((o, i) => tiers[i].length ? o : 0), sum = odds[0] + odds[1];
+    const gs = IDEAS.genShare ?? 0.3, odds = [1 - gs, gs].map((o, i) => tiers[i].length ? o : 0), sum = odds[0] + odds[1];
     if (sum) fresh = tiers[Math.random() * sum < odds[0] ? 0 : 1];
     let t = fresh.reduce((a, x) => a + x.r[0], 0) * Math.random();
     const hit = fresh.find(x => (t -= x.r[0]) <= 0) || fresh[0];

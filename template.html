@@ -743,7 +743,8 @@ function seasonPool() { // 월별 시즌 키워드(제철 음식·계절 루틴�
   }
   return out;
 }
-const IDEA_SEEN_KEY = "ideasSeen";
+const IDEA_NS = ":" + "__SELLER__"; // 모든 셀러 앱이 같은 주소(github.io)를 써서, 휴대폰 기록을 셀러별로 나눠 저장
+const IDEA_SEEN_KEY = "ideasSeen" + IDEA_NS;
 let ideaSeen = new Set((() => { try { return JSON.parse(store.get(IDEA_SEEN_KEY) || "[]"); } catch (e) { return []; } })());
 const ideaCache = {}; // 날짜별로 지금 보여주는 주제 (날짜를 오가도 그대로)
 function ideaCtx(k) {
@@ -755,7 +756,7 @@ function ideaCtx(k) {
 }
 /* 좋아요/싫어요 학습: 형식(f)·목표(g)·주제 태그·출처마다 점수를 쌓아 비슷한 기획을 더(덜) 고름.
    이 휴대폰의 평가(ideaVotes) + 모든 담당자 평가를 매주 모은 IDEAS.learn.keys 를 함께 씀 */
-const VOTE_KEY = "ideaVotes";
+const VOTE_KEY = "ideaVotes" + IDEA_NS; // 좋아요/별로예요도 셀러별로 따로 쌓임
 let ideaVotes = (() => { try { return JSON.parse(store.get(VOTE_KEY) || "{}"); } catch (e) { return {}; } })();
 const ideaKeys = it => [`g:${it.g}`, `f:${it.f}`, ...(it.tags || []).map(x => `tag:${x}`), ...(it.src || []).map(x => `src:${x}`)];
 function learnMap() {

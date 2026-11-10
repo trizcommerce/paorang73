@@ -145,7 +145,7 @@ def main():
     # 시트 내용이 바뀌었는지 비교하는 용도 (업데이트 시각은 제외하고 해시)
     data.pop("updated", None)
     # 앱 코드가 바뀌어도 새로 배포되도록 화면·캘린더 코드도 함께 해시
-    code = "".join((HERE / f).read_text(encoding="utf-8") for f in ("template.html", "cal_feed.py", "pwa_build.py")
+    code = "".join((HERE / f).read_text(encoding="utf-8") for f in ("template.html", "cal_feed.py", "pwa_build.py", "ideas.json")
                    if (HERE / f).exists())
     digest = hashlib.sha256((json.dumps(data, ensure_ascii=False, sort_keys=True) + code).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")

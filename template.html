@@ -110,6 +110,54 @@ a{color:var(--accent)}
 .up-head{margin:28px 0 2px;font-family:var(--display);font-size:17px;font-weight:700}
 .up-date{margin:14px 2px 8px;font-size:13.5px;color:var(--muted)}
 .up-date b{color:var(--ink);font-weight:600;margin-right:4px}
+.idea-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.idea-head .today-btn{font-family:var(--body)}
+.idea-intro{margin:4px 2px 0;font-size:11.5px;line-height:1.5;color:var(--muted);word-break:keep-all}
+.idea-intro .idea-at{font-size:10.5px;opacity:.85;white-space:nowrap}
+.mk.idea{background:transparent;border-radius:1px;width:7px;height:7px;transform:rotate(45deg);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.plan-head{margin:16px 2px 8px;font-size:13.5px;font-weight:700;color:var(--accent)}
+.entry.plan{box-shadow:var(--shadow),inset 0 0 0 1.5px var(--accent-soft)}
+.srcs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.srcs.big{margin:10px 0 2px}
+.src{display:inline-flex;align-items:center;gap:2px;height:20px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+.src.trend{background:#FDE2D6;color:#A3330B}
+.src.search{background:#DCE8FB;color:#1D4E9E}
+.src.fan{background:#F6E1EF;color:#8A2468}
+.src.perf{background:#F6E7C8;color:#7A4E00}
+:root[data-theme="dark"] .src.trend{background:#43231A;color:#FFB59A}
+:root[data-theme="dark"] .src.search{background:#1B2B44;color:#A9C8FF}
+:root[data-theme="dark"] .src.fan{background:#3A1E32;color:#F2A9DA}
+:root[data-theme="dark"] .src.perf{background:#3A2E14;color:#F2C877}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .src.trend{background:#43231A;color:#FFB59A}
+:root:not([data-theme="light"]) .src.search{background:#1B2B44;color:#A9C8FF}
+:root:not([data-theme="light"]) .src.fan{background:#3A1E32;color:#F2A9DA}
+:root:not([data-theme="light"]) .src.perf{background:#3A2E14;color:#F2C877}}
+.idea-brief{display:grid;gap:8px;margin:12px 0 4px;padding:12px 14px;border-radius:14px;background:var(--surface-2);font-size:13.5px;line-height:1.5}
+.idea-brief b{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:1px}
+.idea-learn{display:block;margin:-2px 2px 8px;font-size:11.5px;color:var(--muted)}
+.idea-card{display:flex;flex-direction:column;gap:0}
+.idea-card .entry{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.votes{display:flex;gap:6px;padding:7px 12px 9px;background:var(--surface);border-radius:0 0 16px 16px;box-shadow:var(--shadow);margin-top:-1px}
+.vote{flex:1;height:30px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1px var(--line, rgba(127,127,127,.25))}
+.vote.up.on{background:#DFF3E4;color:#1E6B34;box-shadow:none}
+.vote.down.on{background:#F8E0E0;color:#9B2C2C;box-shadow:none}
+:root[data-theme="dark"] .vote.up.on{background:#183A23;color:#9EE2B0}
+:root[data-theme="dark"] .vote.down.on{background:#3E1D1D;color:#F3A9A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .vote.up.on{background:#183A23;color:#9EE2B0}
+:root:not([data-theme="light"]) .vote.down.on{background:#3E1D1D;color:#F3A9A9}}
+.sheet-votes .votes{box-shadow:none;background:transparent;padding:10px 0 0}
+.e-make{display:block;margin-top:4px;font-size:12px;color:var(--accent)}
+.src.season{background:#E4EFD9;color:#3D6420}
+:root[data-theme="dark"] .src.season{background:#24331A;color:#B9DD98}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .src.season{background:#24331A;color:#B9DD98}}
+.idea-ctx{margin:4px 2px 12px;font-size:13px;color:var(--muted)}
+.fmt.idea-g{font-size:10.5px}
+.fmt.idea-g.image{background:var(--accent-soft);color:var(--accent)}
+.fmt.idea-g.grow{background:var(--ink);color:var(--bg)}
+.fmt.idea-g.bench{background:#F6E7C8;color:#7A4E00}
+:root[data-theme="dark"] .fmt.idea-g.bench{background:#3A2E14;color:#F2C877}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fmt.idea-g.bench{background:#3A2E14;color:#F2C877}}
+.fmt.idea-g.talk{background:transparent;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);border-radius:50%}
 .empty.sm{margin-top:10px;padding:16px}
 .empty{padding:28px 16px;text-align:center;color:var(--muted);background:var(--surface);border-radius:16px;border:1px dashed var(--line)}
 
@@ -348,6 +396,9 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 
 <script>
 const DATA = /*__DATA__*/null;
+const IDEAS = /*__IDEAS__*/null; // 일상 콘텐츠 추천 (ideas.json 이 있는 앱만)
+const SRC = {trend: ["🔥", "유행"], search: ["🔎", "검색량"], fan: ["💬", "팔로워 관심"], perf: ["📈", "성과 검증"], season: ["🍂", "시즌"]};
+const srcChips = it => (it.src || []).map(k => SRC[k] ? `<span class="src ${k}">${SRC[k][0]} ${SRC[k][1]}</span>` : "").join("");
 const $ = s => document.querySelector(s);
 const DOW = ["일","월","화","수","목","금","토"];
 const FMT = {reel:"릴스", post:"피드", story:"스토리", qa:"무물", live:"라방", ad:"광고", meeting:"일정", free:"자유", etc:"기타"};
@@ -651,6 +702,214 @@ function entryHTML(e, idx, opts = {}) {
   </button>`;
 }
 
+/* ---------------- 일상 콘텐츠 주제 추천 (ideas.json 이 있는 앱만) ----------------
+   커머스·제품과는 연결하지 않음. 계절·요일·그날 업로드 양만 봄.
+   이 휴대폰에서 이미 본 주제는 다시 보여주지 않고(다 보면 처음부터), '다른 주제'는 매번 새로 고름. */
+const GOAL_ORDER = ["image", "grow", "talk", "bench"];
+const TREND_DAYS = IDEAS?.analysis?.trendWindow || 31; // 유행·검색량 기획은 기준일(asof)로부터 한 달 안에만 보여줌
+const isFresh = it => !(it.src || []).some(k => k === "trend" || k === "search") || !it.asof || (Date.now() - parse(it.asof)) / 864e5 <= TREND_DAYS;
+/* 추천은 '속 내용이 충분한' 기획만: 기획 의도·타깃·목표 지표·셀러 이미지·후킹(2개+)·상황 예시(4컷+)·촬영 가이드·스토리 연계·행동 유도 문구가 모두 있어야 함 */
+const IDEA_REQ = ["intent", "target", "kpi", "image", "shoot", "story", "cta"];
+const isFull = it => IDEA_REQ.every(k => it[k]) && (it.hooks || []).length >= 2 && (it.scene || it.steps || []).length >= 4;
+const IDEA_POOL = !IDEAS ? [] : [
+  ...IDEAS.items.filter(isFresh).map(it => ({...it, w: it.src?.length ? 4 : it.ref ? 3 : 2})),
+  ...seasonPool(),
+].filter(isFull);
+function josa(w, withF, noF) { // 받침에 따라 조사 고르기 (로는 ㄹ받침도 '로')
+  const c = w.replace(/[^가-힣]+$/, "").slice(-1).charCodeAt(0) - 0xAC00;
+  if (c < 0 || c > 11171) return noF;
+  const f = c % 28;
+  return !f || (noF === "로" && f === 8) ? noF : withF;
+}
+function seasonPool() { // 월별 시즌 키워드(제철 음식·계절 루틴·명절·시즌 행사) 중 이 계정 핏(fitTags)에 맞는 것만 기획 틀과 조합
+  if (!IDEAS.seasons || !IDEAS.seasonAngles) return [];
+  const fit = new Set(IDEAS.fitTags || []), skip = new Set(IDEAS.seasonSkip || []), out = []; // seasonSkip: 이 셀러에게 안 맞는 키워드, seasonExtra: 셀러 전용 키워드
+  const months = {...IDEAS.seasons};
+  for (const [m, list] of Object.entries(IDEAS.seasonExtra || {})) months[m] = [...(months[m] || []), ...list];
+  for (const [m, list] of Object.entries(months)) for (const kw of list) {
+    if (skip.has(kw.k) || (fit.size && !kw.tags.some(x => fit.has(x)))) continue;
+    for (const a of IDEAS.seasonAngles[kw.type] || []) {
+      const needM = a.t.includes("{m}");
+      if (needM && !kw.make?.length) continue;
+      for (const mk of needM ? kw.make : [kw.make?.[0] || ""]) {
+        const fill = x => x.replaceAll("{k}{로}", kw.k + josa(kw.k, "으로", "로")).replaceAll("{k}{은}", kw.k + josa(kw.k, "은", "는"))
+          .replaceAll("{k}", kw.k).replaceAll("{m}", mk).replace(/ — 예: $/, "");
+        const o = {g: a.g, f: a.f, t: fill(a.t), hooks: a.hooks.map(fill), scene: a.steps.map(fill), why: a.why,
+          months: [+m], src: ["season"], tags: kw.tags, make: kw.make, examples: kw.make, season: kw.k, gen: true, w: 2};
+        IDEA_REQ.forEach(k => { if (a[k]) o[k] = fill(a[k]); });
+        out.push(o);
+      }
+    }
+  }
+  return out;
+}
+const IDEA_SEEN_KEY = "ideasSeen";
+let ideaSeen = new Set((() => { try { return JSON.parse(store.get(IDEA_SEEN_KEY) || "[]"); } catch (e) { return []; } })());
+const ideaCache = {}; // 날짜별로 지금 보여주는 주제 (날짜를 오가도 그대로)
+function ideaCtx(k) {
+  const d = parse(k);
+  const weekend = d.getDay() === 0 || d.getDay() === 6;
+  const busy = (byDate[k] || []).filter(e => !e.holiday && e.fmt !== "meeting").length;
+  return {month: d.getMonth() + 1, weekend, busy,
+    line: `${d.getMonth() + 1}월 ${weekend ? "주말" : "평일"}`};
+}
+/* 좋아요/싫어요 학습: 형식(f)·목표(g)·주제 태그·출처마다 점수를 쌓아 비슷한 기획을 더(덜) 고름.
+   이 휴대폰의 평가(ideaVotes) + 모든 담당자 평가를 매주 모은 IDEAS.learn.keys 를 함께 씀 */
+const VOTE_KEY = "ideaVotes";
+let ideaVotes = (() => { try { return JSON.parse(store.get(VOTE_KEY) || "{}"); } catch (e) { return {}; } })();
+const ideaKeys = it => [`g:${it.g}`, `f:${it.f}`, ...(it.tags || []).map(x => `tag:${x}`), ...(it.src || []).map(x => `src:${x}`)];
+function learnMap() {
+  const m = {...(IDEAS?.learn?.keys || {})};
+  for (const v of Object.values(ideaVotes)) for (const k of v.keys) m[k] = (m[k] || 0) + v.v;
+  return m;
+}
+let LEARN = learnMap();
+function prefMult(it) {
+  const ks = ideaKeys(it);
+  const sum = ks.reduce((a, k) => a + (LEARN[k] || 0), 0) / Math.sqrt(ks.length);
+  return Math.min(4, Math.max(0.2, Math.exp(0.45 * sum)));
+}
+function ideaScore(it, ctx) {
+  if (it.months && !it.months.includes(ctx.month)) return [0];
+  const mine = ideaVotes[it.t]?.v, team = IDEAS.learn?.titles?.[it.t] || 0;
+  if (mine === -1 || team <= -2) return [0]; // 싫어요한 기획은 다시 안 보여줌
+  const why = [];
+  let s = it.w;
+  const pm = prefMult(it);
+  s *= pm;
+  if (pm >= 1.4) why.push("좋아요한 기획과 비슷");
+  if (it.months) { s += 2; why.push(`${ctx.month}월 시즌`); }
+  const w = it.when || [];
+  if (w.includes(ctx.weekend ? "weekend" : "weekday")) { s += 1.5; why.push(ctx.weekend ? "주말" : "평일"); }
+  else if (w.length) { if (it.w === 1) return [0]; s *= 0.25; } // 조합 주제는 요일이 안 맞으면 빼기
+  if (ctx.busy && (it.f === "스토리")) { s += 1.5; why.push("가볍게 올리기 좋음"); }
+  else if (ctx.busy && it.f === "라방") s *= 0.3;
+  return [s, why];
+}
+function pickIdeas(k, avoid = []) {
+  const ctx = ideaCtx(k);
+  const picks = GOAL_ORDER.map(g => {
+    let pool = IDEA_POOL.filter(it => it.g === g && !avoid.includes(it.t)).map(it => ({it, r: ideaScore(it, ctx)})).filter(x => x.r[0] > 0);
+    let fresh = pool.filter(x => !ideaSeen.has(x.it.t));
+    if (!fresh.length) { // 이 목표의 주제를 다 봤으면 본 기록을 비우고 처음부터
+      pool.forEach(x => ideaSeen.delete(x.it.t));
+      fresh = pool;
+    }
+    // 손으로 자세히 쓴 기획 70% → 이달 시즌 키워드 기획 30%
+    const tiers = [fresh.filter(x => !x.it.gen), fresh.filter(x => x.it.gen)];
+    const odds = [0.7, 0.3].map((o, i) => tiers[i].length ? o : 0), sum = odds[0] + odds[1];
+    if (sum) fresh = tiers[Math.random() * sum < odds[0] ? 0 : 1];
+    let t = fresh.reduce((a, x) => a + x.r[0], 0) * Math.random();
+    const hit = fresh.find(x => (t -= x.r[0]) <= 0) || fresh[0];
+    if (!hit) return null;
+    ideaSeen.add(hit.it.t);
+    return {...hit.it, whyText: hit.it.why, why: hit.r[1]};
+  }).filter(Boolean);
+  store.set(IDEA_SEEN_KEY, JSON.stringify([...ideaSeen].slice(-600)));
+  return {ctx, picks};
+}
+function ideaIntro() { // ideas.json 의 analysis 로 안내 문장을 만듦 → 분석을 새로 하면 문장도 자동으로 바뀜
+  const a = IDEAS.analysis; if (!a) return "";
+  const f = parse(a.from), t = parse(a.to);
+  const months = Math.max(1, Math.round((t - f) / (30.4 * 864e5)));
+  const parts = [`게시글 ${a.count}개의 성과`, a.comments ? "팔로워 댓글" : "", a.trends ? "최근 한 달 유행·검색 키워드" : ""].filter(Boolean);
+  const what = parts.length > 1 ? `${parts[0]}와 ${parts.slice(1).join(", ")}` : parts[0];
+  const vs = Object.values(ideaVotes), up = vs.filter(v => v.v > 0).length, dn = vs.filter(v => v.v < 0).length, team = IDEAS.learn?.votes || 0;
+  const learnLine = up || dn || team ? `<small class="idea-learn">👍 ${up} · 👎 ${dn}${team ? ` · 팀 평가 ${team}개` : ""} 반영 중 — 좋아요한 건 더, 싫어요한 건 덜, 그냥 넘긴 건 '무난'으로 다시 추천해요</small>` : `<small class="idea-learn">마음에 들면 👍, 별로면 👎 를 눌러주세요. 그냥 넘긴 기획은 '무난'으로 보고 나중에 다시 추천해요</small>`;
+  return `<p class="idea-intro">최근 ${months}개월(${f.getMonth() + 1}/${f.getDate()}~${t.getMonth() + 1}/${t.getDate()}) ${what}를 분석해, 셀러 이미지·계정 성장·팔로워 소통에 도움 되는 주제를 추천드려요!${a.at ? ` <small class="idea-at">· ${+a.at.slice(5, 7)}/${+a.at.slice(8, 10)} 업데이트</small>` : ""}</p>${learnLine}`;
+}
+let ideaShown = [];
+function logShown(picks) { // 추천으로 보여준 기획 기록 → 평가 없이 넘긴 것은 '무난'으로 집계
+  logView("idea_shown", picks.map(x => x.t).join(" / ").slice(0, 200), "shown|" + picks.map(x => x.g).join(","));
+}
+function ideasHTML() {
+  if (!IDEAS) return "";
+  if (!ideaCache[sel]) { ideaCache[sel] = pickIdeas(sel); logShown(ideaCache[sel].picks); }
+  const got = ideaCache[sel];
+  const {ctx, picks} = got;
+  ideaShown = picks;
+  return `<div class="up-head idea-head"><span>💡 일상 콘텐츠 추천</span><button type="button" class="today-btn" id="idea-more">다른 주제</button></div>
+    ${ideaIntro()}
+    <div class="idea-ctx">${esc(ctx.line)}</div>
+    <div class="list">${picks.map((it, i) => {
+      const ref = it.ref && IDEAS.refs[it.ref];
+      const meta = [it.f, `🎯 ${it.kpi}`, ...it.why];
+      const v = ideaVotes[it.t]?.v || 0;
+      return `<div class="idea-card"><button type="button" class="entry idea" data-idea="${i}">
+      <span class="fmt idea-g ${it.g}">${esc(IDEAS.short[it.g])}</span>
+      <span class="e-body">${it.src?.length ? `<span class="srcs">${srcChips(it)}</span>` : ""}<span class="e-title">${esc(it.t)}</span><span class="e-prev">${esc(it.hooks ? it.hooks[0] : ref ? ref.point : it.whyText)}</span>
+      ${it.make?.length ? `<span class="e-make">🍳 만들어보기: ${esc(it.make.slice(0, 2).join(", "))}</span>` : it.examples?.length ? `<span class="e-make">📌 예시: ${esc(it.examples.slice(0, 2).join(", "))}</span>` : ""}
+      <span class="e-meta">${meta.map(w => `<span>${esc(w)}</span>`).join("")}</span></span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      ${voteBtns(i, v)}</div>`;
+    }).join("")}</div>`;
+}
+const voteBtns = (i, v) => `<div class="votes"><button type="button" class="vote up${v > 0 ? " on" : ""}" data-vote="${i}" data-v="1" aria-pressed="${v > 0}" aria-label="좋아요">👍 좋아요</button><button type="button" class="vote down${v < 0 ? " on" : ""}" data-vote="${i}" data-v="-1" aria-pressed="${v < 0}" aria-label="싫어요">👎 별로예요</button></div>`;
+function voteIdea(i, val) { // 같은 버튼을 다시 누르면 취소
+  const it = ideaShown[i]; if (!it) return;
+  const prev = ideaVotes[it.t]?.v || 0, v = prev === val ? 0 : val;
+  if (v) ideaVotes[it.t] = {v, keys: ideaKeys(it), at: Date.now()}; else delete ideaVotes[it.t];
+  store.set(VOTE_KEY, JSON.stringify(ideaVotes));
+  LEARN = learnMap();
+  logView("idea_vote", it.t, `v=${v}|${ideaKeys(it).join("|")}`.slice(0, 200)); // 담당자 평가를 모아 매주 기획에 반영
+  if (v === -1) { // 싫어요: 그 자리에 다른 기획으로 바꿔 줌
+    const repl = pickIdeas(sel, ideaShown.map(x => x.t)).picks.find(x => x.g === it.g);
+    if (repl) { ideaShown[i] = repl; ideaCache[sel].picks[i] = repl; }
+    toast("비슷한 형식·주제는 덜 추천할게요");
+  } else if (v === 1) toast("비슷한 형식·주제를 더 추천할게요");
+  renderAgenda();
+}
+function moreIdeas() { // '다른 주제': 지금 보이는 주제는 빼고 새로 고름 (넘긴 주제는 '무난' — 벌점 없이 나중에 다시 나옴)
+  ideaCache[sel] = pickIdeas(sel, ideaShown.map(x => x.t));
+  logShown(ideaCache[sel].picks);
+  renderAgenda();
+  document.querySelector(".idea-head")?.scrollIntoView({block: "nearest"});
+}
+function openIdea(it) {
+  const ref = it.ref && IDEAS.refs[it.ref];
+  const goal = IDEAS.goals[it.g] || "";
+  const hooks = it.hooks || [];
+  const scene = it.scene || it.steps || [];
+  const ex = it.examples || it.make || [];
+  const exText = x => it.make?.includes(x) ? `🍳 ${x} 만들어보기` : `📌 ${x}`;
+  const lines = [`[${goal} · ${it.f}] ${it.t}`,
+    `핵심 기획 의도: ${it.intent}`, `저격 타깃: ${it.target}`, `목표 지표: ${it.kpi}`, `목표 셀러 이미지: ${it.image}`,
+    `후킹 문구:\n${hooks.map(h => `- ${h}`).join("\n")}`,
+    `상황 예시(컷 구성):\n${scene.map((x, i) => `${i + 1}) ${x}`).join("\n")}`,
+    `촬영 가이드: ${it.shoot}`,
+    ...(ex.length ? [`구체 예시${it.make?.length ? " · 이번 시즌 만들어보기" : ""}:\n${ex.map(x => `- ${exText(x)}`).join("\n")}`] : []),
+    `스토리 연계: ${it.story}`, `행동 유도 문구: ${it.cta}`,
+    ...(it.caption ? [`캡션 첫 문단:\n${it.caption}`] : []), ...(it.tip ? [`제작 팁: ${it.tip}`] : []),
+    ...(it.basis ? [`기획 근거: ${it.basis}`] : []),
+    ...(it.srcLink ? [`유행 출처: ${it.srcLink.label} ${it.srcLink.url}`] : []),
+    ...(ref ? [`참고 게시물: ${ref.label} (${ref.stat}) ${ref.url}`] : [])];
+  const field = (lb, html, cls = "") => `<div class="field${cls}"><div class="lb">${lb}</div><div class="tx">${html}</div></div>`;
+  openSheet(`<span class="pill">${esc(goal)}</span><span class="pill ghost">${esc(it.f)}</span>`, it.t,
+    (it.src?.length ? `<div class="srcs big">${srcChips(it)}</div>` : "") +
+    `<div class="idea-brief">
+      <div><b>🎯 핵심 기획 의도</b>${esc(it.intent)}</div>
+      <div><b>👥 저격 타깃</b>${esc(it.target)}</div>
+      <div><b>📊 목표 지표</b>${esc(it.kpi)}</div>
+      <div><b>✨ 목표 셀러 이미지</b>${esc(it.image)}</div>
+    </div>` +
+    field("후킹 문구", hooks.map(h => `• ${esc(h)}`).join("\n")) +
+    field("상황 예시 · 컷 구성", scene.map((x, i) => `${i + 1}) ${esc(x)}`).join("\n")) +
+    field("촬영 가이드", esc(it.shoot)) +
+    (ex.length ? field(it.make?.length ? "구체 예시 · 이번 시즌 만들어보기" : "구체 예시", ex.map(x => esc(exText(x))).join("\n")) : "") +
+    field("스토리 연계", esc(it.story)) +
+    field("행동 유도 문구", esc(it.cta)) +
+    (it.caption ? field("캡션 첫 문단", esc(it.caption)) : "") +
+    (it.tip ? field("제작 팁", esc(it.tip)) : "") +
+    (it.basis ? field("기획 근거", esc(it.basis)) : "") +
+    (it.srcLink ? field("유행 출처", `<a href="${safeUrl(it.srcLink.url)}" target="_blank" rel="noopener">${esc(it.srcLink.label)}</a>`) : "") +
+    (ref ? field("참고한 게시물", `<a href="${safeUrl(ref.url)}" target="_blank" rel="noopener">${esc(ref.label)}</a>\n${esc(ref.stat)}\n${esc(ref.point)}`) : "") +
+    (Array.isArray(it.why) && it.why.length ? field("오늘 추천한 이유", esc(it.why.join(" · "))) : "") +
+    `<div class="cap-tools"><button type="button" class="cap-btn" id="idea-copy">기획 메모 복사</button></div>` +
+    (ideaShown.includes(it) ? `<div class="sheet-votes">${voteBtns(ideaShown.indexOf(it), ideaVotes[it.t]?.v || 0)}</div>` : ""));
+  $("#idea-copy").onclick = () => copyText(lines.join("\n\n"));
+  document.querySelectorAll(".sheet-votes .vote").forEach(b => b.onclick = () => { closeSheet(); voteIdea(+b.dataset.vote, +b.dataset.v); });
+}
+
 let agendaList = [];
 const UPCOMING = +"__UPCOMING__" || 3; // 날짜 아래 '다가오는 N일' (config.json upcoming_days)
 function renderAgenda() {
@@ -685,6 +944,7 @@ function renderAgenda() {
       : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
     <div class="up-head">${sel === TODAY ? `다가오는 ${UPCOMING}일` : `이후 ${UPCOMING}일`}</div>
     ${soon.length ? soon.join("") : `<div class="empty sm">${UPCOMING}일 안에 잡힌 콘텐츠가 없어요.</div>`}
+    ${ideasHTML()}
     <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트 · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a></p>`;
 }
 
@@ -696,6 +956,9 @@ $("#cal-grid").addEventListener("click", ev => {
   renderCal();
 });
 $("#agenda").addEventListener("click", ev => {
+  if (ev.target.closest("#idea-more")) return moreIdeas();
+  const vb = ev.target.closest("[data-vote]"); if (vb) return voteIdea(+vb.dataset.vote, +vb.dataset.v);
+  const ib = ev.target.closest("[data-idea]"); if (ib) return openIdea(ideaShown[+ib.dataset.idea]);
   const b = ev.target.closest(".entry"); if (b) openEntry(agendaList[+b.dataset.idx]);
 });
 const shift = n => { cur = new Date(cur.getFullYear(), cur.getMonth() + n, 1); renderCal(); };

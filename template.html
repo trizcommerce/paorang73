@@ -732,7 +732,7 @@ function seasonPool() { // 월별 시즌 키워드(제철 음식·계절 루틴�
   const months = {...IDEAS.seasons};
   for (const [m, list] of Object.entries(IDEAS.seasonExtra || {})) months[m] = [...(months[m] || []), ...list];
   for (const [m, list] of Object.entries(months)) for (const kw of list) {
-    if (skip.has(kw.k) || (fit.size && !kw.tags.some(x => fit.has(x)))) continue;
+    if (skip.has(kw.k) || (fit.size && !kw.tags.some(x => fit.has(x))) || (IDEAS.seasonTypes && !IDEAS.seasonTypes.includes(kw.type))) continue; // seasonTypes: 이 셀러에게 쓸 시즌 유형만(예: 뽕커벨은 제철 음식 제외)
     for (const a of IDEAS.seasonAngles[kw.type] || []) {
       const ex = IDEAS.combos?.[kw.k] || (IDEAS.noMake ? [] : kw.make || []); // 조합형 셀러는 레시피 대신 조합 예시
       const needM = a.t.includes("{m}");

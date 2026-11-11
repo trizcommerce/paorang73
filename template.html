@@ -308,6 +308,18 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .viewer .stage::-webkit-scrollbar{display:none}
 .viewer .stage div{flex:0 0 100%;scroll-snap-align:center;display:grid;place-items:center;padding:0 8px calc(16px + env(safe-area-inset-bottom,0px))}
 .viewer .stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+.help-btn{color:var(--muted)}
+.cal-head{gap:2px;flex:none}.cal-head .icon-btn{width:34px}.cal-head .today-btn{margin:0 2px;white-space:nowrap}
+#v-cal .topbar>div:first-child{min-width:0}#cal-year{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.help-intro{font-size:14.5px;line-height:1.7;word-break:keep-all;margin:10px 0 4px}
+.help details.fold{background:var(--surface-2);box-shadow:none;margin-top:8px}
+.help .fold-body{white-space:normal}
+.help ul{margin:0;padding-left:18px}.help li{margin:5px 0}
+.help li b{font-weight:600}
+.help .lg{display:inline-flex;align-items:center;gap:5px;margin-right:4px}
+.help .lg .mk{--c:var(--accent)}
+.help .kbd{display:inline-block;padding:0 7px;border-radius:7px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-size:12.5px;font-weight:600;line-height:20px}
+.help .note{margin-top:14px;font-size:12.5px;color:var(--muted);line-height:1.6;word-break:keep-all}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 
@@ -320,6 +332,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
         <div class="h-title" id="cal-title">9월</div>
       </div>
       <div class="cal-head">
+        <button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button>
         <button class="icon-btn" id="btn-alarm" type="button" aria-label="휴대폰 캘린더로 알림 받기"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg></button>
         <button class="today-btn" id="btn-today" type="button">오늘</button>
         <button class="icon-btn" id="btn-prev" type="button" aria-label="이전 달"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -338,13 +351,13 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
   </section>
 
   <section class="view" id="v-prod" aria-label="제품" hidden>
-    <div class="topbar"><div><div class="eyebrow">공구 콘텐츠 기획</div><div class="h-title">제품별</div></div></div>
+    <div class="topbar"><div><div class="eyebrow">공구 콘텐츠 기획</div><div class="h-title">제품별</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
     <div class="tabs" id="prod-tabs" role="tablist"></div>
     <div class="pager" id="prod-pager"></div>
   </section>
 
   <section class="view" id="v-month" aria-label="월별" hidden>
-    <div class="topbar"><div><div class="eyebrow">월간 콘텐츠 캘린더</div><div class="h-title">월별</div></div></div>
+    <div class="topbar"><div><div class="eyebrow">월간 콘텐츠 캘린더</div><div class="h-title">월별</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
     <div class="tabs" id="month-tabs" role="tablist"></div>
     <div class="pager" id="month-pager"></div>
   </section>
@@ -1063,6 +1076,91 @@ function openAlarmSubscribe(choice) {
   };
 }
 $("#btn-alarm").onclick = openAlarmSheet;
+
+/* ---------------- ? 사용 설명서 (셀러용) ---------------- */
+function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
+  const sec = (title, items, open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${title}</summary><div class="fold-body"><ul>${items.filter(Boolean).map(x => `<li>${x}</li>`).join("")}</ul></div></details>` : "";
+  const k = t => `<span class="kbd">${t}</span>`;
+  const raw = JSON.stringify(DATA);
+  const hasMonth = DATA.months.length > 0;
+  const nProd = DATA.products.length;
+  const hasSale = sales.length > 0, hasBar = spans.length > 0;
+  const hasCap = /"[^"]*(캡션|피드글|피드\s*포인트)[^"]*"\s*:/.test(raw) || /"label"\s*:\s*"[^"]*(캡션|피드글|피드\s*포인트)/.test(raw);
+  const hasImg = /\.(jpe?g|png|webp|gif)\b/i.test(raw);
+  const items = IDEAS ? IDEAS.items || [] : [];
+  const used = new Set(items.flatMap(i => i.src || []));
+  if (IDEAS && Object.values(IDEAS.seasons || {}).some(l => l.length)) used.add("season");
+  const SRC_HELP = {trend: "요즘 뜨는 콘텐츠", search: "많이 찾는 키워드", fan: "댓글에서 나온 이야기", perf: "반응이 좋았던 콘텐츠", season: "지금 계절·행사"};
+  const srcLine = Object.keys(SRC_HELP).filter(x => used.has(x)).map(x => `<b>${SRC[x][0]} ${SRC[x][1]}</b> ${SRC_HELP[x]}`).join(" · ");
+  const hasMake = !IDEAS?.noMake && items.some(i => i.make?.length);
+  const hasEx = items.some(i => i.examples?.length);
+  const goals = IDEAS ? Object.values(IDEAS.goals || {}).map(g => `<b>${escRaw(g)}</b>`).join(" · ") : "";
+  const what = [`<b>올릴 콘텐츠 일정</b>을 한눈에 보고`, hasCap ? `<b>캡션 복사</b>` : "", IDEAS ? `<b>일상 콘텐츠 아이디어</b>` : ""].filter(Boolean);
+  const html = `<div class="help">
+    <p class="help-intro">이 캘린더에서 ${what[0]}${what.length > 1 ? `, ${what.slice(1).join("부터 ")}까지 휴대폰 하나로 챙기실 수 있어요` : ", 기획 내용까지 휴대폰 하나로 챙기실 수 있어요"}. 궁금한 항목을 눌러 펼쳐 보세요.</p>
+    ${sec("📅 캘린더 보는 법", [
+      `화면 아래 메뉴에서 <b>캘린더</b> · <b>제품별</b>${hasMonth ? " · <b>월별</b>" : ""} 화면을 오갈 수 있어요.`,
+      `날짜 아래 표시는 그날 올릴 콘텐츠예요.<br><span class="lg"><i class="mk feed"></i>공구 피드(릴스·캐러셀)</span> <span class="lg"><i class="mk story"></i>공구 스토리</span> <span class="lg"><i class="mk other" style="--c:var(--muted)"></i>그 외 일정</span><br>${nProd > 1 ? "표시 색깔은 제품마다 달라요. " : ""}4개가 넘으면 <b>+숫자</b>로 보여요.`,
+      hasBar ? `달력 위 <b>색 막대</b>는 공구 기간${hasSale ? ", 날짜 칸의 <b>OPEN</b>은 공구가 열리는 날" : ""}이에요.` : "",
+      `동그라미 친 날짜가 <b>오늘</b>이고, 빨간 날짜는 일요일·공휴일이에요.`,
+      `${k("‹")} ${k("›")} 로 지난달·다음 달을 보고, ${k("오늘")}을 누르면 오늘로 돌아와요.`
+    ], true)}
+    ${hasSale ? sec("⏰ 공구 현황 (달력 위 카드)", [
+      `<b>● 진행 중인 공구</b>: 마감까지 남은 시간이 실시간으로 줄어들어요. 결제창 마감 시간이 있으면 함께 보여요.`,
+      `<b>다음 공구</b>: 오픈까지 남은 날(D-day)과 오픈 시간을 알려드려요.`,
+      `날짜를 누르면 그날 진행 중인 공구와 곧 열릴 공구(D-30 이내)도 위에 표시돼요.`
+    ]) : ""}
+    ${sec("👆 날짜를 누르면", [
+      `달력 아래에 <b>그날 올릴 콘텐츠</b>가 나오고, 그 아래에 <b>다가오는 ${UPCOMING}일</b> 일정도 미리 보여요.`,
+      `각 콘텐츠 앞 라벨(릴스 · 피드 · 스토리 · 라방 등)로 형식을 바로 알 수 있어요.`,
+      `콘텐츠를 누르면 <b>기획 내용${hasCap ? " · 캡션" : ""}${hasImg ? " · 참고 사진" : ""}</b>이 담긴 상세 창이 열려요.`,
+      `창은 오른쪽 위 ✕ 를 누르거나, 창 윗부분을 <b>아래로 쓸어내리면</b> 닫혀요.`
+    ])}
+    ${sec(hasCap ? "✍️ 캡션 복사 · 수정 · 맞춤법" : hasImg ? "🖼 참고 사진 보기" : "", [
+      hasCap ? `${k("복사")}를 누르면 캡션이 복사돼요. 인스타그램 글쓰기 칸에 길게 눌러 붙여넣기 하세요.` : "",
+      hasCap ? `${k("수정하기")}로 내 말투에 맞게 고칠 수 있어요. 고친 캡션은 <b>이 휴대폰에 저장</b>되고, ${k("원래대로")}를 누르면 처음 캡션으로 돌아가요.` : "",
+      hasCap ? `${k("맞춤법 검사")}는 자주 틀리는 표현을 찾아 드려요. 더 꼼꼼히 보려면 ‘네이버 검사기로 더 검사’를 누르면 300자씩 나눠 복사할 수 있어요.` : "",
+      hasImg ? `사진을 누르면 크게 볼 수 있고, 옆으로 넘겨 다음 사진을 볼 수 있어요.` : ""
+    ].filter(Boolean))}
+    ${IDEAS ? sec("💡 일상 콘텐츠 추천", [
+      `날짜를 누른 화면 <b>맨 아래</b>에 공구 콘텐츠 사이사이 올리기 좋은 <b>일상 콘텐츠 아이디어</b>가 나와요. 날짜마다 다른 주제를 추천드려요.`,
+      `이 계정의 최근 게시물 반응${IDEAS.analysis?.comments ? "과 팔로워 댓글" : ""}${used.has("trend") || used.has("search") ? ", 요즘 유행" : ""}${used.has("season") ? "과 계절 키워드" : ""}를 바탕으로 <b>이 계정만을 위해</b> 기획한 주제예요. 매주 월요일에 새 기획이 추가돼요.`,
+      goals ? `왼쪽 라벨은 이 콘텐츠의 목표예요: ${goals}` : "",
+      srcLine ? `작은 표시는 추천 근거예요. ${srcLine}` : "",
+      IDEAS.srcBoost ? `이 계정은 ${Object.entries(IDEAS.srcBoost).filter(([, v]) => v > 1).map(([x]) => SRC[x] ? `<b>${SRC[x][0]} ${SRC[x][1]}</b>` : "").filter(Boolean).join(" · ")} 기획을 중심으로 추천드려요.` : "",
+      IDEAS.combos ? `음식 콘텐츠는 직접 만드는 레시피 대신, 바로 따라 할 수 있는 <b>음식 조합</b>으로 추천드려요.` : "",
+      hasMake ? `<b>🍳 만들어보기</b>는 이번 계절에 만들어 보기 좋은 메뉴 예시예요.` : "",
+      hasEx ? `<b>📌 예시</b>에는 바로 활용할 수 있는 구체적인 메뉴·장소·소재가 담겨 있어요.` : "",
+      `주제를 누르면 <b>기획 의도 · 타깃 · 후킹 문구 · 컷 구성 · 촬영 가이드 · 스토리 연계 · 행동 유도 문구</b>까지 담긴 기획서가 열려요. ${k("기획 메모 복사")}로 메모장에 옮겨 두실 수 있어요.`,
+      `다른 아이디어를 보고 싶으면 ${k("다른 주제")}를 눌러 주세요.`,
+      `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.`,
+      `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.`
+    ].filter(Boolean)) : ""}
+    ${sec("🔔 휴대폰 알림 받기", [
+      `달력 오른쪽 위 <b>종 모양 버튼</b>을 눌러 주세요.`,
+      `알림 받을 시점(<b>3일 전 · 하루 전 · 당일 오전</b>)을 고르고, 아이폰 캘린더나 구글 캘린더에 추가하면 업로드 일정이 휴대폰 캘린더에 들어가요.`,
+      `일정이 바뀌면 휴대폰 캘린더에도 자동으로 반영돼요. 자세한 설정 방법은 종 버튼을 누르면 나와요.`
+    ])}
+    ${sec(hasMonth ? "📦 제품별 · 🗓 월별 화면" : "📦 제품별 화면", [
+      nProd > 1 ? `<b>제품별</b>: 위쪽 제품 이름을 누르거나 화면을 옆으로 넘기면, 제품마다 준비된 콘텐츠 기획을 모아 볼 수 있어요.`
+        : `<b>제품별</b>: 제품에 맞춰 준비된 콘텐츠 기획을 한곳에 모아 볼 수 있어요.`,
+      hasMonth ? `<b>월별</b>: 한 달 동안의 콘텐츠 기획을 달마다 모아 볼 수 있어요. 위쪽 달 이름을 누르거나 옆으로 넘겨 다른 달을 볼 수 있어요.` : ""
+    ].filter(Boolean))}
+    ${sec("📱 앱처럼 홈 화면에 두기", [
+      `<b>아이폰(사파리)</b>: 아래 가운데 공유 버튼 → <b>홈 화면에 추가</b>`,
+      `<b>안드로이드(크롬)</b>: 오른쪽 위 ⋮ → <b>홈 화면에 추가</b> 또는 <b>앱 설치</b>`,
+      `홈 화면 아이콘으로 열면 주소창 없이 앱처럼 깔끔하게 볼 수 있어요.`
+    ])}
+    ${sec("❓ 자주 묻는 질문", [
+      `<b>일정이 바뀌었다고 들었는데 그대로예요.</b><br>바뀐 내용은 보통 30분 안에 반영돼요. 앱을 완전히 닫았다가 다시 열어 보세요.`,
+      hasCap ? `<b>고친 캡션이 안 보여요.</b><br>고친 캡션은 그 휴대폰 브라우저에만 저장돼요. 다른 휴대폰이나 다른 브라우저에서는 보이지 않고, 방문 기록을 지우면 함께 지워져요.` : "",
+      `<b>그 밖에 궁금한 점</b>은 담당 매니저에게 편하게 물어봐 주세요 🙌`
+    ].filter(Boolean))}
+    <p class="note">이 설명은 언제든 화면 위 <b>?</b> 버튼을 눌러 다시 볼 수 있어요.</p>
+  </div>`;
+  openSheet(`<span class="pill ghost">사용 설명서</span>`, "캘린더 이렇게 쓰세요", html);
+}
+document.querySelectorAll(".help-btn").forEach(b => b.onclick = openHelp);
 
 /* ---------------- 사진 크게 보기 ---------------- */
 let viewerBack = null;

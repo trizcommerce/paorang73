@@ -320,6 +320,58 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .help .lg .mk{--c:var(--accent)}
 .help .kbd{display:inline-block;padding:0 7px;border-radius:7px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-size:12.5px;font-weight:600;line-height:20px}
 .help .note{margin-top:14px;font-size:12.5px;color:var(--muted);line-height:1.6;word-break:keep-all}
+/* ---- 댓글 여론 ---- */
+.op-sec{margin-top:26px}
+.op-sec>h3{font-family:var(--display);font-size:17px;font-weight:700;margin:0 2px 10px}
+.op-sec>h3 small{display:block;font-family:inherit;font-size:12px;font-weight:500;color:var(--muted);margin-top:3px}
+.op-card{background:var(--surface);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+.op-card+.op-card{margin-top:10px}
+.op-card b{display:block;font-size:15px;font-weight:600;margin-bottom:4px;word-break:keep-all}
+.op-card p{margin:0;font-size:14px;line-height:1.65;word-break:keep-all;color:var(--ink)}
+.op-card .src2{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
+.op-card .tip{display:block;margin-top:8px;padding:7px 10px;border-radius:10px;background:var(--accent-soft);font-size:12.5px;line-height:1.5;word-break:keep-all}
+.op-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.op-head span{flex:none;font-size:11.5px;color:var(--muted)}
+.op-hl{margin:0;padding:0;list-style:none;counter-reset:hl}
+.op-hl li{position:relative;padding:12px 14px 12px 40px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);font-size:14px;line-height:1.65;word-break:keep-all;counter-increment:hl}
+.op-hl li+li{margin-top:8px}
+.op-hl li::before{content:counter(hl);position:absolute;left:13px;top:13px;width:19px;height:19px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:11.5px;font-weight:700;display:grid;place-items:center}
+.op-stack{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:4px 0 12px}
+.op-stack i{display:block;background:var(--c)}
+.op-legend{display:grid;gap:8px}
+.op-legend div{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;font-size:13.5px}
+.op-legend i{width:10px;height:10px;border-radius:3px;background:var(--c);align-self:center}
+.op-legend em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums}
+.op-legend small{grid-column:2/4;font-size:12px;color:var(--muted);line-height:1.5}
+.op-lv{flex:none;height:20px;padding:0 8px;border-radius:999px;font-size:11px!important;font-weight:600;display:inline-flex;align-items:center}
+.op-lv.high{background:color-mix(in srgb,var(--sun) 18%,transparent);color:var(--sun)!important}
+.op-lv.mid{background:color-mix(in srgb,#E3B04B 24%,transparent);color:#8A5F0A!important}
+.op-lv.low{background:var(--surface-2);color:var(--muted)}
+:root[data-theme="dark"] .op-lv.mid{color:#F0C46A!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .op-lv.mid{color:#F0C46A!important}}
+.op-bars{display:grid;gap:9px;margin-top:4px}
+.op-bars div{display:grid;grid-template-columns:100px 1fr 28px;gap:8px;align-items:center;font-size:13px}
+.op-bars span.b{height:10px;border-radius:5px;background:var(--accent);opacity:.85}
+.op-bars em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.op-upd{margin:2px 2px 8px;font-size:11.5px;color:var(--muted)}
+.op-tag{flex:none;height:20px;padding:0 8px;border-radius:999px;font-size:11px!important;font-weight:700;display:inline-flex;align-items:center}
+.op-tag.new{background:var(--accent);color:var(--accent-ink)!important}
+.op-tag.up{background:color-mix(in srgb,var(--sun) 18%,transparent);color:var(--sun)!important}
+.op-who{margin:0;padding-left:18px;font-size:14px;line-height:1.7;word-break:keep-all}
+.op-who li+li{margin-top:4px}
+.op-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.op-chips button{height:30px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:500;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.op-chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.op-post{background:var(--surface);border-radius:14px;box-shadow:var(--shadow)}
+.op-post+.op-post{margin-top:8px}
+.op-post summary{list-style:none;cursor:pointer;padding:12px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.op-post summary::-webkit-details-marker{display:none}
+.op-post .dt{font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.op-post .tt{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-post .nn{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.op-post .bd{padding:0 14px 14px;font-size:13.5px;line-height:1.7;word-break:keep-all}
+.op-post .bd .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.op-post .bd a{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 
@@ -362,10 +414,16 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
     <div class="pager" id="month-pager"></div>
   </section>
 
+  <section class="view" id="v-op" aria-label="댓글 여론" hidden>
+    <div class="topbar"><div><div class="eyebrow">최근 3개월 팔로워 댓글</div><div class="h-title">댓글 여론</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
+    <div class="scroll" id="op-scroll"></div>
+  </section>
+
   <nav class="nav" aria-label="메뉴">
     <button type="button" data-view="v-cal" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>캘린더</button>
     <button type="button" data-view="v-prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>제품별</button>
     <button type="button" data-view="v-month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>월별</button>
+    <button type="button" data-view="v-op" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5h16v10H9.5L5.5 19v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"/></svg>댓글 여론</button>
   </nav>
 </div>
 
@@ -409,7 +467,8 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 
 <script>
 const DATA = /*__DATA__*/null;
-const IDEAS = /*__IDEAS__*/null; // 일상 콘텐츠 추천 (ideas.json 이 있는 앱만)
+const IDEAS = /*__IDEAS__*/null;
+const OPINION = /*__OPINION__*/null; // 최근 3개월 댓글 여론 (opinion.json 이 있는 앱만) // 일상 콘텐츠 추천 (ideas.json 이 있는 앱만)
 const SRC = {trend: ["🔥", "유행"], search: ["🔎", "검색량"], fan: ["💬", "팔로워 관심"], perf: ["📈", "성과 검증"], season: ["🍂", "시즌"]};
 const srcChips = it => (it.src || []).map(k => SRC[k] ? `<span class="src ${k}">${SRC[k][0]} ${SRC[k][1]}</span>` : "").join("");
 const $ = s => document.querySelector(s);
@@ -1099,7 +1158,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
   const html = `<div class="help">
     <p class="help-intro">이 캘린더에서 ${what[0]}${what.length > 1 ? `, ${what.slice(1).join("부터 ")}까지 휴대폰 하나로 챙기실 수 있어요` : ", 기획 내용까지 휴대폰 하나로 챙기실 수 있어요"}. 궁금한 항목을 눌러 펼쳐 보세요.</p>
     ${sec("📅 캘린더 보는 법", [
-      `화면 아래 메뉴에서 <b>캘린더</b> · <b>제품별</b>${hasMonth ? " · <b>월별</b>" : ""} 화면을 오갈 수 있어요.`,
+      `화면 아래 메뉴에서 <b>캘린더</b> · <b>제품별</b>${hasMonth ? " · <b>월별</b>" : ""}${OPINION ? " · <b>댓글 여론</b>" : ""} 화면을 오갈 수 있어요.`,
       `날짜 아래 표시는 그날 올릴 콘텐츠예요.<br><span class="lg"><i class="mk feed"></i>공구 피드(릴스·캐러셀)</span> <span class="lg"><i class="mk story"></i>공구 스토리</span> <span class="lg"><i class="mk other" style="--c:var(--muted)"></i>그 외 일정</span><br>${nProd > 1 ? "표시 색깔은 제품마다 달라요. " : ""}4개가 넘으면 <b>+숫자</b>로 보여요.`,
       hasBar ? `달력 위 <b>색 막대</b>는 공구 기간${hasSale ? ", 날짜 칸의 <b>OPEN</b>은 공구가 열리는 날" : ""}이에요.` : "",
       `동그라미 친 날짜가 <b>오늘</b>이고, 빨간 날짜는 일요일·공휴일이에요.`,
@@ -1136,6 +1195,12 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.`,
       `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.`
     ].filter(Boolean)) : ""}
+    ${OPINION ? sec("💬 댓글 여론", [
+      `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 3개월 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
+      `<b>한눈에 보기 · 주의 신호 · 좋아하는 점 · 자주 묻는 질문 · 요청</b> 순서로 보여드려요.`,
+      `<b>매월 초</b>에 새로 정리되고, 지난달과 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
+      `맨 아래 <b>게시물별 댓글 요약</b>에서 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
+    ]) : ""}
     ${sec("🔔 휴대폰 알림 받기", [
       `달력 오른쪽 위 <b>종 모양 버튼</b>을 눌러 주세요.`,
       `알림 받을 시점(<b>3일 전 · 하루 전 · 당일 오전</b>)을 고르고, 아이폰 캘린더나 구글 캘린더에 추가하면 업로드 일정이 휴대폰 캘린더에 들어가요.`,
@@ -1588,10 +1653,9 @@ function monthPage(m) {
       <div class="full">${m.kind === "grid" ? "날짜별 스토리 · 피드 기획" : "기획 콘텐츠 목록 · 체크는 시트의 이행 체크박스"}</div></div>
     ${noteFolds(m.notes)}${body}`;
 }
-if (!DATA.months.length) {
-  document.querySelector('.nav [data-view="v-month"]').hidden = true;
-  document.querySelector(".nav").style.gridTemplateColumns = "repeat(2,1fr)";
-}
+if (!DATA.months.length) document.querySelector('.nav [data-view="v-month"]').hidden = true;
+if (OPINION) document.querySelector('.nav [data-view="v-op"]').hidden = false;
+document.querySelector(".nav").style.gridTemplateColumns = `repeat(${document.querySelectorAll(".nav button:not([hidden])").length},1fr)`;
 const monthPager = makePager($("#month-tabs"), $("#month-pager"), DATA.months, m => esc(m.name), monthPage, "monthIdx");
 $("#month-pager").addEventListener("click", ev => {
   const b = ev.target.closest(".entry[data-m]"); if (!b) return;
@@ -1613,14 +1677,64 @@ $("#month-pager").addEventListener("click", ev => {
   }
 });
 
+/* ---------------- 댓글 여론 (최근 3개월) ---------------- */
+let opFilter = "전체", opDone = false;
+const OP_LV = {"높음": "high", "중간": "mid", "낮음": "low"};
+function renderOpinion() {
+  if (!OPINION || opDone) return; opDone = true;
+  const O = OPINION, md = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
+  const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
+  const total = O.mood.reduce((n, m) => n + m.v, 0);
+  const maxF = O.flavors ? Math.max(...O.flavors.v.map(x => x[1])) : 1;
+  const ymd = x => x.replace(/-/g, ".");
+  const ch = O.changes || {}, chItem = (x, tag) => `<div class="op-card"><div class="op-head"><b>${escRaw(x.t)}</b><span class="op-tag ${tag === "NEW" ? "new" : "up"}">${tag}</span></div><p>${escRaw(x.d)}</p>${x.src ? `<span class="src2">근거: ${escRaw(x.src)}</span>` : ""}</div>`;
+  const chBody = (ch.new || []).length || (ch.deeper || []).length
+    ? (ch.new || []).map(x => chItem(x, "NEW")).join("") + (ch.deeper || []).map(x => chItem(x, "심화")).join("")
+    : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "지난 정리와 비교해 새로 생기거나 짙어진 여론은 없었어요." : "다음 달 초 업데이트부터 지난 정리와 비교해 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
+  const kinds = ["전체", ...new Set(O.posts.map(p => p.kind))];
+  $("#op-scroll").innerHTML = `
+    <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매월 초에 업데이트돼요</p>
+    <div class="hero" style="--c:var(--accent)"><span class="swatch"></span>
+      <h2>팔로워는 이렇게 말해요</h2>
+      <div class="full">${md(O.from)}~${md(O.to)} 게시물 ${O.count}개 · 팔로워 댓글 ${O.read.toLocaleString()}개를 직접 읽고 정리했어요</div>
+      <p class="idea-intro" style="margin-top:8px">${escRaw(O.note)} ${md(O.at)} 정리.</p></div>
+    ${sec("🆕 지난달 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 최근 한 달 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
+    ${sec("한눈에 보기", "", `<ol class="op-hl">${O.headline.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
+    ${sec("댓글 분위기", escRaw(O.moodNote), `<div class="op-card"><div class="op-stack" role="img" aria-label="${escRaw(O.mood.map(m => `${m.k} ${m.v}%`).join(", "))}">${O.mood.map(m => `<i style="--c:${m.c};width:${m.v / total * 100}%"></i>`).join("")}</div>
+      <div class="op-legend">${O.mood.map(m => `<div style="--c:${m.c}"><i></i><span>${escRaw(m.k)}</span><em>${m.v}%</em><small>${escRaw(m.ex)}</small></div>`).join("")}</div></div>`)}
+    ${sec("⚠️ 주의 신호", "놓치면 신뢰가 깎일 수 있는 댓글이에요", O.warns.map(w => `<div class="op-card"><div class="op-head"><b>${escRaw(w.t)}</b><span class="op-lv ${OP_LV[w.lv] || "low"}">${escRaw(w.lv)}</span></div><p>${escRaw(w.d)}</p></div>`).join(""))}
+    ${sec("❤️ 팔로워가 좋아하는 점", "", O.loves.map(l => card(l.t, l.d, `<span class="src2">근거: ${escRaw(l.src)}</span>`)).join(""))}
+    ${sec("❓ 자주 묻는 질문", "답을 미리 콘텐츠에 넣으면 저장·신뢰가 올라가요", O.asks.map(a => `<div class="op-card"><div class="op-head"><b>${escRaw(a.t)}</b><span>${escRaw(a.n)}</span></div><p>${escRaw(a.d)}</p>${a.tip ? `<span class="tip">💡 ${escRaw(a.tip)}</span>` : ""}</div>`).join(""))}
+    ${sec("🙋 팔로워 요청", "", O.wants.map(w => card(w.t, w.d)).join(""))}
+    ${sec("📊 콘텐츠 유형별 반응", "", O.kinds.map(k => `<div class="op-card"><div class="op-head"><b>${escRaw(k.k)}</b><span>${escRaw(k.r)}</span></div><p>${escRaw(k.d)}</p></div>`).join(""))}
+    ${sec("👥 어떤 팔로워인가요", "댓글에 직접 밝힌 상황 기준", `<div class="op-card"><ul class="op-who">${O.who.map(w => `<li>${escRaw(w)}</li>`).join("")}</ul></div>`)}
+    ${!O.flavors ? "" : sec((O.flavors.icon || "📊") + " " + escRaw(O.flavors.h || "선호 조사"), escRaw(O.flavors.t), `<div class="op-card"><div class="op-bars">${O.flavors.v.map(([k, v]) => `<div><span>${escRaw(k)}</span><span class="b" style="width:${v / maxF * 100}%"></span><em>${v}</em></div>`).join("")}</div><p style="margin-top:10px;font-size:13px;color:var(--muted)">${escRaw(O.flavors.d)}</p></div>`)}
+    ${sec("💡 일상 콘텐츠 힌트", "댓글 반응에서 나온 기획 방향", `<ol class="op-hl">${O.ideas.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
+    ${sec("🗂 게시물별 댓글 요약", `게시물 ${O.count}개 · 눌러서 펼쳐 보세요`, `<div class="op-chips" role="group" aria-label="게시물 종류">${kinds.map(k => `<button type="button" data-k="${escRaw(k)}" aria-pressed="${k === opFilter}">${escRaw(k)}${k === "전체" ? "" : ` ${O.posts.filter(p => p.kind === k).length}`}</button>`).join("")}</div><div id="op-posts"></div>`)}`;
+  const list = () => {
+    const ps = O.posts.filter(p => opFilter === "전체" || p.kind === opFilter).slice().reverse();
+    $("#op-posts").innerHTML = ps.map(p => `<details class="op-post"><summary><span class="dt">${escRaw(p.d)}</span><span class="tt">${escRaw(p.t)}</span><span class="nn">💬 ${p.n}</span></summary>
+      <div class="bd"><div class="meta"><span class="pill ghost">${escRaw(p.kind)}</span><span class="pill line">${escRaw(p.type)}</span><span class="pill line">읽은 댓글 ${p.n}개${p.total > p.n ? ` / 전체 ${p.total.toLocaleString()}개` : ""}</span></div>${escRaw(p.s)}<br><a href="https://www.instagram.com/p/${encodeURIComponent(p.code)}/" target="_blank" rel="noopener">게시물 보기 ↗</a></div></details>`).join("");
+  };
+  list();
+  $("#op-scroll").querySelector(".op-chips").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    opFilter = b.dataset.k;
+    b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    list();
+  });
+}
+
 /* ---------------- views ---------------- */
-const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months"};
+const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months", "v-op": "opinion"};
 function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== id);
   document.querySelectorAll(".nav button").forEach(b => b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   store.set("view", id);
   if (id === "v-prod") prodPager.go(prodPager.idx, false);
   if (id === "v-month") monthPager.go(monthPager.idx, false);
+  if (id === "v-op") renderOpinion();
 }
 document.querySelector(".nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.view); });
 
@@ -1632,5 +1746,5 @@ prodPager.init(+(store.get("prodIdx") ?? defaultProd) || 0);
 monthPager.init(+(store.get("monthIdx") ?? 0) || 0);
 const hashView = Object.entries(VIEWS).find(([, h]) => location.hash === "#" + h)?.[0];
 const wanted = hashView || store.get("view") || "v-cal";
-showView(wanted === "v-month" && !DATA.months.length ? "v-cal" : wanted);
+showView((wanted === "v-month" && !DATA.months.length) || (wanted === "v-op" && !OPINION) ? "v-cal" : wanted);
 </script>

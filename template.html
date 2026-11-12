@@ -357,6 +357,10 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .op-tag{flex:none;height:20px;padding:0 8px;border-radius:999px;font-size:11px!important;font-weight:700;display:inline-flex;align-items:center}
 .op-tag.new{background:var(--accent);color:var(--accent-ink)!important}
 .op-tag.up{background:color-mix(in srgb,var(--sun) 18%,transparent);color:var(--sun)!important}
+.op-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.op-stats div{background:var(--surface-2);border-radius:12px;padding:10px 8px;text-align:center}
+.op-stats b{display:block;font-size:20px;font-weight:700;margin:0;font-variant-numeric:tabular-nums}
+.op-stats span{font-size:11.5px;color:var(--muted)}
 .op-who{margin:0;padding-left:18px;font-size:14px;line-height:1.7;word-break:keep-all}
 .op-who li+li{margin-top:4px}
 .op-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -1685,7 +1689,22 @@ function renderOpinion() {
   const O = OPINION, md = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
   const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
-  const total = O.mood.reduce((n, m) => n + m.v, 0);
+  const IQ = O.iq;
+  const MOOD = IQ && IQ.counted ? O.mood.map(m => ({...m, n: IQ.mood[m.k] || 0, v: Math.round((IQ.mood[m.k] || 0) / IQ.counted * 100)})) : O.mood;
+  const moodNote = IQ && IQ.counted ? `${md(IQ.from)}~${md(IQ.to)} 팔로워 댓글 ${IQ.counted.toLocaleString()}개 전체를 성격별로 나눈 비율이에요${IQ.entries ? ` (이벤트 응모 댓글 ${IQ.entries.toLocaleString()}개는 따로 뺐어요)` : ""}` : O.moodNote;
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const iqReply = !IQ ? "" : (() => {
+    const r = IQ.replies, got = pct(r.got, r.users), tp = pct(r.template, r.seller);
+    const tiles = [["셀러 답글", `${r.seller.toLocaleString()}개`], ["답글 받은 팔로워", `${got}%`], ["같은 문구 답글", `${tp}%`]];
+    return `<div class="op-card"><div class="op-stats">${tiles.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join("")}</div>
+      <p style="margin-top:10px">댓글을 단 팔로워 100명 중 ${got}명이 셀러 답글을 받았어요.${r.template ? ` 셀러 답글 ${r.seller.toLocaleString()}개 중 ${r.template.toLocaleString()}개(${tp}%)는 같은 안내 문구를 여러 번 붙여 넣은 답글이에요.` : ""}</p></div>`;
+  })();
+  const iqQ = !IQ ? "" : (() => {
+    const q = IQ.questions;
+    return `<div class="op-card"><p>팔로워 질문 ${q.total.toLocaleString()}개 중 <b style="display:inline">${q.unanswered.toLocaleString()}개(${pct(q.unanswered, q.total)}%)</b>에 댓글 답글이 달리지 않았어요. DM이나 스토리로 답했을 수도 있어요.</p></div>` +
+      (q.examples || []).map(e => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${e.url ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
+  })();
+  const total = MOOD.reduce((n, m) => n + m.v, 0);
   const maxF = O.flavors ? Math.max(...O.flavors.v.map(x => x[1])) : 1;
   const ymd = x => x.replace(/-/g, ".");
   const ch = O.changes || {}, chItem = (x, tag) => `<div class="op-card"><div class="op-head"><b>${escRaw(x.t)}</b><span class="op-tag ${tag === "NEW" ? "new" : "up"}">${tag}</span></div><p>${escRaw(x.d)}</p>${x.src ? `<span class="src2">근거: ${escRaw(x.src)}</span>` : ""}</div>`;
@@ -1701,8 +1720,10 @@ function renderOpinion() {
       <p class="idea-intro" style="margin-top:8px">${escRaw(O.note)} ${md(O.at)} 정리.</p></div>
     ${sec("🆕 지난달 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 최근 한 달 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
     ${sec("한눈에 보기", "", `<ol class="op-hl">${O.headline.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
-    ${sec("댓글 분위기", escRaw(O.moodNote), `<div class="op-card"><div class="op-stack" role="img" aria-label="${escRaw(O.mood.map(m => `${m.k} ${m.v}%`).join(", "))}">${O.mood.map(m => `<i style="--c:${m.c};width:${m.v / total * 100}%"></i>`).join("")}</div>
-      <div class="op-legend">${O.mood.map(m => `<div style="--c:${m.c}"><i></i><span>${escRaw(m.k)}</span><em>${m.v}%</em><small>${escRaw(m.ex)}</small></div>`).join("")}</div></div>`)}
+    ${sec("댓글 분위기", escRaw(moodNote), `<div class="op-card"><div class="op-stack" role="img" aria-label="${escRaw(MOOD.map(m => `${m.k} ${m.v}%`).join(", "))}">${MOOD.map(m => `<i style="--c:${m.c};width:${m.v / total * 100}%"></i>`).join("")}</div>
+      <div class="op-legend">${MOOD.map(m => `<div style="--c:${m.c}"><i></i><span>${escRaw(m.k)}${m.n != null ? ` <small style="display:inline;color:var(--muted)">${m.n.toLocaleString()}개</small>` : ""}</span><em>${m.v}%</em><small>${escRaw(m.ex)}</small></div>`).join("")}</div></div>`)}
+    ${IQ ? sec("💬 답글 소통", `${md(IQ.from)}~${md(IQ.to)} 게시물 ${IQ.posts}개의 전체 댓글 기준`, iqReply) : ""}
+    ${IQ ? sec("🙋 답을 기다리는 질문", "셀러 답글이 달리지 않은 팔로워 질문이에요. 콘텐츠나 Q&A 소재로 쓰기 좋아요", iqQ) : ""}
     ${sec("⚠️ 주의 신호", "놓치면 신뢰가 깎일 수 있는 댓글이에요", O.warns.map(w => `<div class="op-card"><div class="op-head"><b>${escRaw(w.t)}</b><span class="op-lv ${OP_LV[w.lv] || "low"}">${escRaw(w.lv)}</span></div><p>${escRaw(w.d)}</p></div>`).join(""))}
     ${sec("❤️ 팔로워가 좋아하는 점", "", O.loves.map(l => card(l.t, l.d, `<span class="src2">근거: ${escRaw(l.src)}</span>`)).join(""))}
     ${sec("❓ 자주 묻는 질문", "답을 미리 콘텐츠에 넣으면 저장·신뢰가 올라가요", O.asks.map(a => `<div class="op-card"><div class="op-head"><b>${escRaw(a.t)}</b><span>${escRaw(a.n)}</span></div><p>${escRaw(a.d)}</p>${a.tip ? `<span class="tip">💡 ${escRaw(a.tip)}</span>` : ""}</div>`).join(""))}

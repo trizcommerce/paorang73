@@ -382,6 +382,9 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .op-post .bd a{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 /* ===== 새 디자인 (테스트): 밝은 파랑, 둥근 카드, 반듯한 글꼴 ===== */
+/* 하단 메뉴: 보이는 탭 개수에 맞춰 한 줄로 나눠 채움 (3개든 4개든 줄바꿈 없음) */
+.nav{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.nav button{white-space:nowrap;min-width:0}
 @media (pointer:coarse){:root{--font:-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Noto Sans KR","Pretendard","Pretendard Variable",sans-serif}}
 body{letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
 .app{background:var(--hero-grad) top/100% 220px no-repeat,var(--bg)}

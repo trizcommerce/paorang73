@@ -10,7 +10,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -37,6 +37,15 @@ jobs:
         run: |
           python build_app.py
           python pwa_build.py
+      - name: 연동한 댓글 여론 저장 (admin '최종 연동')
+        run: |
+          if ! git diff --quiet -- opinion.json 2>/dev/null; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add opinion.json
+            git commit -m "댓글 여론 최종 연동 반영"
+            git pull --rebase origin main && git push || echo "저장 실패 — 다음 실행 때 다시"
+          fi
       - id: pages
         uses: actions/configure-pages@v5
       - name: 바뀐 내용이 있는지 확인

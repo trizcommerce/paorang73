@@ -1261,6 +1261,11 @@ def main():
         ideas = HERE / "ideas.json"  # 일상 콘텐츠 주제 추천 (파일이 있는 앱만)
         html = html.replace("/*__IDEAS__*/null", json.dumps(json.loads(ideas.read_text(encoding="utf-8")), ensure_ascii=False).replace("</", "<\\/")
                             if ideas.exists() else "null")
+        try:  # admin '최종 연동'에서 체크한 댓글 여론만 반영 (admin_calendar_app/master/opinion_sync.py)
+            import opinion_sync
+            opinion_sync.apply(HERE)
+        except Exception as e:
+            print("opinion sync 실패(빌드는 계속):", e)
         opinion = HERE / "opinion.json"  # 최근 3개월 댓글 여론 (파일이 있는 앱만)
         html = html.replace("/*__OPINION__*/null", json.dumps(json.loads(opinion.read_text(encoding="utf-8")), ensure_ascii=False).replace("</", "<\\/")
                             if opinion.exists() else "null")

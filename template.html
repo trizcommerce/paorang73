@@ -851,10 +851,10 @@ const isFresh = it => !(it.src || []).some(k => k === "trend" || k === "search")
 /* 추천은 '속 내용이 충분한' 기획만: 기획 의도·타깃·목표 지표·셀러 이미지·후킹(2개+)·상황 예시(4컷+)·촬영 가이드·스토리 연계·행동 유도 문구가 모두 있어야 함 */
 const IDEA_REQ = ["intent", "target", "kpi", "image", "shoot", "story", "cta"];
 const isFull = it => IDEA_REQ.every(k => it[k]) && (it.hooks || []).length >= 2 && (it.scene || it.steps || []).length >= 4;
-/* 셀러별 규칙(ideas.json): avoid = 이 셀러에게 기획하지 않을 주제어, srcBoost = 출처별 가중치(예: 팔로워 관심·성과 검증 위주),
+/* 셀러별 규칙(ideas.json): avoid = 이 셀러에게 기획하지 않을 주제어(기획에 safe:true 면 검토를 거친 리스크 없는 기획이라 통과), srcBoost = 출처별 가중치(예: 팔로워 관심·성과 검증 위주),
    genShare = 시즌 자동 기획이 나올 비율, combos = 레시피 대신 '음식 조합'으로 보여줄 제철 음식별 조합 예시 */
 const AVOID = IDEAS?.avoid?.length ? new RegExp(IDEAS.avoid.join("|")) : null;
-const avoided = it => AVOID && AVOID.test([it.t, ...(it.hooks || []), it.intent || ""].join(" "));
+const avoided = it => !it.safe && AVOID && AVOID.test([it.t, ...(it.hooks || []), it.intent || ""].join(" "));
 const srcW = it => (it.src || []).reduce((m, k) => m * (IDEAS.srcBoost?.[k] ?? 1), 1);
 const IDEA_POOL = !IDEAS ? [] : [
   ...IDEAS.items.filter(isFresh).map(it => ({...it, w: (it.src?.length ? 4 : it.ref ? 3 : 2) * srcW(it)})),

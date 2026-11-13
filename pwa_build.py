@@ -150,6 +150,9 @@ def main():
             shutil.copy(f, PWA / "downloads" / "app.mobileconfig")
     # 관리자(admin) 캘린더가 모든 셀러 일정을 모아 보도록 데이터 파일도 함께 올림
     shutil.copy(DATA, PWA / "data.json")
+    for f in ("config.json", "ideas.json", "opinion.json"):   # admin 캘린더가 셀러 화면을 그대로 그리는 데 씀
+        if (HERE / f).exists():
+            shutil.copy(HERE / f, PWA / f)
     data = json.loads(DATA.read_text(encoding="utf-8"))
     # 휴대폰 캘린더 구독용 파일: 알림 시점(당일 오전 / 하루 전 / 3일 전)마다 하나씩
     for fname, alarm_at, suffix in cal_feed.ALARMS:

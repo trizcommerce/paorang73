@@ -124,6 +124,9 @@ def main():
     PWA.mkdir()
     html = SRC.read_text(encoding="utf-8")
     html = html.replace("<title>", HEAD + "<title>", 1) + REGISTER
+    # 브라우저로 열면 뜨는 '앱 설치하기' 창 (APK / 바탕화면 바로가기)
+    if (HERE / "install_prompt.html").exists():
+        html += (HERE / "install_prompt.html").read_text(encoding="utf-8")
     (PWA / "index.html").write_text(html, encoding="utf-8")
     # 앱 데이터가 가리키는 시트 이미지만 복사
     used = set(re.findall(r"media/([0-9a-f]{16}\.jpg)", DATA.read_text(encoding="utf-8")))
@@ -140,6 +143,11 @@ def main():
     # 설치 파일(안드로이드 APK, 아이폰 프로필)과 내려받기 페이지
     if (HERE / "downloads").is_dir():
         shutil.copytree(HERE / "downloads", PWA / "downloads")
+        # 창에서 쓰는 고정 이름 (셀러마다 파일 이름이 달라서)
+        for f in (PWA / "downloads").glob("*.apk"):
+            shutil.copy(f, PWA / "downloads" / "app.apk")
+        for f in (PWA / "downloads").glob("*.mobileconfig"):
+            shutil.copy(f, PWA / "downloads" / "app.mobileconfig")
     data = json.loads(DATA.read_text(encoding="utf-8"))
     # 휴대폰 캘린더 구독용 파일: 알림 시점(당일 오전 / 하루 전 / 3일 전)마다 하나씩
     for fname, alarm_at, suffix in cal_feed.ALARMS:

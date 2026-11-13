@@ -1,0 +1,108 @@
+<!-- '앱 설치하기' 창: 브라우저로 캘린더를 열면 뜬다. 앱(APK·아이폰 프로필)으로 열었거나 이미 설치했으면 뜨지 않는다.
+     pwa_build.py 가 index.html 끝에 붙인다. 파일은 downloads/app.apk, downloads/app.mobileconfig (pwa_build.py 가 복사). -->
+<div class="inst" id="inst" role="dialog" aria-modal="true" aria-labelledby="inst-title" hidden>
+  <div class="inst-card">
+    <div class="inst-head">
+      <img src="icon-192.png" alt="">
+      <div><h3 id="inst-title">앱 설치하기</h3><p id="inst-sub">캘린더를 휴대폰 앱처럼 쓰려면 설치 방법을 골라 주세요.</p></div>
+    </div>
+    <div id="inst-choices">
+      <button type="button" class="inst-opt" id="inst-apk" hidden>
+        <b>앱(APK)으로 설치</b><span>안드로이드 앱으로 설치해요. 새 버전이 나오면 앱에서 업데이트를 알려 줘요.</span>
+      </button>
+      <button type="button" class="inst-opt" id="inst-prof" hidden>
+        <b>앱으로 설치 (설치 프로필)</b><span>아이폰 홈 화면에 앱 아이콘을 만들어요. 설정 앱에서 ‘설치’만 누르면 돼요.</span>
+      </button>
+      <button type="button" class="inst-opt" id="inst-short">
+        <b id="inst-short-t">바탕화면 바로가기</b><span id="inst-short-d">바탕화면(홈 화면)에 캘린더 바로가기 아이콘을 만들어요.</span>
+      </button>
+    </div>
+    <div id="inst-guide" class="inst-guide" hidden></div>
+    <button type="button" class="inst-later" id="inst-later">나중에 할게요</button>
+  </div>
+</div>
+<style>
+.inst{position:fixed;inset:0;z-index:95;display:grid;place-items:end center;background:var(--scrim,rgba(0,0,0,.4));padding:16px}
+.inst[hidden]{display:none}
+.inst-card{width:100%;max-width:420px;background:var(--surface,#fff);color:var(--ink,#222);border-radius:24px;padding:20px 18px 12px;box-shadow:0 10px 40px rgba(0,0,0,.25);margin-bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+@media (min-width:600px){.inst{place-items:center}}
+.inst-head{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.inst-head img{width:52px;height:52px;flex:none}
+.inst-head h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.02em}
+.inst-head p{margin:2px 0 0;font-size:13px;color:var(--muted,#777);line-height:1.45}
+.inst-opt{display:block;width:100%;text-align:left;background:var(--surface-2,#f3f3f3);border-radius:16px;padding:13px 14px;margin-bottom:8px;border:1.5px solid transparent}
+.inst-opt:first-of-type:not([hidden]){border-color:var(--accent,#b5523b);background:var(--accent-soft,#f5e4db)}
+.inst-opt b{display:block;font-size:15.5px;color:var(--ink,#222)}
+.inst-opt span{display:block;font-size:12.5px;color:var(--muted,#777);margin-top:2px;line-height:1.45}
+.inst-opt[hidden]{display:none}
+.inst-guide{background:var(--surface-2,#f3f3f3);border-radius:16px;padding:14px;font-size:14px;line-height:1.6;margin-bottom:8px}
+.inst-guide ol{margin:6px 0 0;padding-left:20px}
+.inst-guide b{color:var(--accent,#b5523b)}
+.inst-later{display:block;width:100%;padding:12px;font-size:14px;color:var(--muted,#777)}
+</style>
+<script>
+(function () {
+  var ua = navigator.userAgent;
+  var isAndroid = /Android/i.test(ua);
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var inApp = /; wv\)/.test(ua) || window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (inApp) return;                                   // 이미 앱으로 열었으면 창을 띄우지 않음
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  if (get("instDone")) return;                         // 이 휴대폰에서 이미 설치함
+  if (sget("instLater")) return;                       // 이번에 '나중에'를 눌렀음 (브라우저를 다시 열면 또 물어봄)
+
+  var deferred = null;
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; });
+  window.addEventListener("appinstalled", function () { set("instDone", "1"); finish("바로가기를 만들었어요! 바탕화면(홈 화면)에서 캘린더 아이콘을 눌러 주세요."); });
+
+  var box = document.getElementById("inst"), guide = document.getElementById("inst-guide"),
+      choices = document.getElementById("inst-choices"), later = document.getElementById("inst-later");
+  if (isAndroid) document.getElementById("inst-apk").hidden = false;
+  if (isIOS) {
+    document.getElementById("inst-prof").hidden = false;
+    document.getElementById("inst-short-t").textContent = "홈 화면 바로가기";
+    document.getElementById("inst-short-d").textContent = "Safari로 홈 화면에 캘린더 바로가기 아이콘을 만들어요.";
+  }
+
+  function showGuide(html) { choices.hidden = true; guide.innerHTML = html; guide.hidden = false; later.textContent = "닫기"; }
+  function finish(msg) { showGuide(msg); }
+  function close() { box.hidden = true; }
+
+  document.getElementById("inst-apk").onclick = function () {
+    var a = document.createElement("a"); a.href = "downloads/app.apk"; a.download = "calendar-app.apk";
+    document.body.appendChild(a); a.click(); a.remove();
+    set("instDone", "1");
+    showGuide("앱 파일을 내려받고 있어요.<ol><li>다 받으면 알림창(또는 다운로드)에서 <b>파일을 눌러요</b>.</li><li>‘출처를 알 수 없는 앱’이 나오면 <b>설정 → 이 출처 허용</b>을 켜요.</li><li><b>설치</b>를 누르면 끝이에요. Play 프로텍트 안내가 나오면 <b>무시하고 설치</b>를 눌러요.</li></ol>");
+  };
+  document.getElementById("inst-prof").onclick = function () {
+    set("instDone", "1");
+    showGuide("설치 프로필을 내려받았어요.<ol><li>‘허용’을 눌러요.</li><li><b>설정</b> 앱을 열면 맨 위 <b>프로파일이 다운로드됨</b>을 눌러요.</li><li><b>설치</b>를 누르고 휴대폰 암호를 넣으면 홈 화면에 앱이 생겨요.</li></ol>");
+    location.href = "downloads/app.mobileconfig";
+  };
+  document.getElementById("inst-short").onclick = function () {
+    if (deferred) {                                    // 크롬·엣지: 설치 창을 바로 띄움
+      deferred.prompt();
+      deferred.userChoice.then(function (c) {
+        deferred = null;
+        if (c && c.outcome === "accepted") { set("instDone", "1"); finish("바로가기를 만들었어요! 바탕화면(홈 화면)에서 캘린더 아이콘을 눌러 주세요."); }
+      });
+    } else if (isIOS) {
+      showGuide("Safari에서 이렇게 해 주세요.<ol><li>화면 아래 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요.</li><li><b>홈 화면에 추가</b>를 누르고 <b>추가</b>를 눌러요.</li></ol>");
+    } else {
+      showGuide("브라우저 메뉴에서 바로가기를 만들어 주세요.<ol><li>오른쪽 위 <b>⋮</b> 메뉴를 눌러요.</li><li><b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 눌러요.</li></ol>");
+    }
+  };
+  later.onclick = function () { sset("instLater", "1"); close(); };
+
+  // 이름 입력 창이 떠 있으면 그게 끝난 뒤에 띄움
+  var tries = 0;
+  (function wait() {
+    var who = document.getElementById("who");
+    if (who && !who.hidden && tries++ < 600) return setTimeout(wait, 500);
+    setTimeout(function () { box.hidden = false; }, 700);
+  })();
+})();
+</script>

@@ -967,15 +967,9 @@ function pickOne(g, ctx, avoid) {
     return {...hit.it, whyText: hit.it.why, why: hit.r[1]};
   }
 }
-function ideaIntro() { // ideas.json 의 analysis 로 안내 문장을 만듦 → 분석을 새로 하면 문장도 자동으로 바뀜
-  const a = IDEAS.analysis; if (!a) return "";
-  const f = parse(a.from), t = parse(a.to);
-  const months = Math.max(1, Math.round((t - f) / (30.4 * 864e5)));
-  const parts = [`게시글 ${a.count}개의 성과`, a.comments ? "팔로워 댓글" : "", a.trends ? "최근 한 달 유행·검색 키워드" : ""].filter(Boolean);
-  const what = parts.length > 1 ? `${parts[0]}와 ${parts.slice(1).join(", ")}` : parts[0];
-  const vs = Object.values(ideaVotes), up = vs.filter(v => v.v > 0).length, dn = vs.filter(v => v.v < 0).length, team = IDEAS.learn?.votes || 0;
-  const learnLine = up || dn || team ? `<small class="idea-learn">👍 ${up} · 👎 ${dn}${team ? ` · 팀 평가 ${team}개` : ""} 반영 중 — 좋아요한 건 더, 싫어요한 건 덜, 그냥 넘긴 건 '무난'으로 다시 추천해요</small>` : `<small class="idea-learn">마음에 들면 👍, 별로면 👎 를 눌러주세요. 그냥 넘긴 기획은 '무난'으로 보고 나중에 다시 추천해요</small>`;
-  return `<p class="idea-intro">최근 ${months}개월(${f.getMonth() + 1}/${f.getDate()}~${t.getMonth() + 1}/${t.getDate()}) ${what}를 분석해, 셀러 이미지·계정 성장·팔로워 소통에 도움 되는 주제를 추천드려요!${a.at ? ` <small class="idea-at">· ${+a.at.slice(5, 7)}/${+a.at.slice(8, 10)} 업데이트</small>` : ""}</p>${learnLine}`;
+function ideaIntro() { // 일상 추천 탭 맨 위: 마지막 업데이트 날짜만
+  const at = IDEAS.analysis?.at; if (!at) return "";
+  return `<p class="idea-intro"><small class="idea-at">${+at.slice(5, 7)}월 ${+at.slice(8, 10)}일 업데이트</small></p>`;
 }
 let ideaShown = [];
 function logShown(picks) { // 추천으로 보여준 기획 기록 → 평가 없이 넘긴 것은 '무난'으로 집계

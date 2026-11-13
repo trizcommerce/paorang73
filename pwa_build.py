@@ -28,7 +28,7 @@ BG = "#F6F1EA"
 
 HEAD = f"""<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="{BG}" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#171210" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F6F1EA" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-title" content="{SHORT}">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">

@@ -1267,8 +1267,10 @@ def main():
         except Exception as e:
             print("opinion sync 실패(빌드는 계속):", e)
         opinion = HERE / "opinion.json"  # 최근 3개월 댓글 여론 (파일이 있는 앱만)
-        html = html.replace("/*__OPINION__*/null", json.dumps(json.loads(opinion.read_text(encoding="utf-8")), ensure_ascii=False).replace("</", "<\\/")
-                            if opinion.exists() else "null")
+        op = json.loads(opinion.read_text(encoding="utf-8")) if opinion.exists() else None
+        if op and not any(isinstance(v, list) and v for v in op.values()):
+            op = None   # 내용 없는 댓글 여론(admin '최종 연동' 전)은 탭을 숨김
+        html = html.replace("/*__OPINION__*/null", json.dumps(op, ensure_ascii=False).replace("</", "<\\/") if op else "null")
         OUT.write_text(html.replace("/*__DATA__*/null", payload), encoding="utf-8")
         print("built", OUT)
     print(f"events={len(events)} products={len(products)} months={len(months)}")

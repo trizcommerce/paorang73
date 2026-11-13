@@ -481,11 +481,17 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
     <div class="scroll" id="op-scroll"></div>
   </section>
 
+  <section class="view" id="v-idea" aria-label="일상 추천" hidden>
+    <div class="topbar"><div><div class="eyebrow">이 계정 맞춤 일상 콘텐츠</div><div class="h-title">일상 추천</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
+    <div class="scroll" id="idea-scroll"></div>
+  </section>
+
   <nav class="nav" aria-label="메뉴">
     <button type="button" data-view="v-cal" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>캘린더</button>
     <button type="button" data-view="v-prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>제품별</button>
     <button type="button" data-view="v-month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>월별</button>
     <button type="button" data-view="v-op" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5h16v10H9.5L5.5 19v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"/></svg>댓글 여론</button>
+    <button type="button" data-view="v-idea" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>일상 추천</button>
   </nav>
 </div>
 
@@ -886,7 +892,7 @@ function seasonPool() { // 월별 시즌 키워드(제철 음식·계절 루틴�
 const IDEA_NS = ":" + "__SELLER__"; // 모든 셀러 앱이 같은 주소(github.io)를 써서, 휴대폰 기록을 셀러별로 나눠 저장
 const IDEA_SEEN_KEY = "ideasSeen" + IDEA_NS;
 let ideaSeen = new Set((() => { try { return JSON.parse(store.get(IDEA_SEEN_KEY) || "[]"); } catch (e) { return []; } })());
-const ideaCache = {}; // 날짜별로 지금 보여주는 주제 (날짜를 오가도 그대로)
+const ideaCache = {}; // 일상 추천 탭에 지금 보여주는 주제 (탭을 오가도 그대로)
 function ideaCtx(k) {
   const d = parse(k);
   const weekend = d.getDay() === 0 || d.getDay() === 6;
@@ -927,9 +933,23 @@ function ideaScore(it, ctx) {
   else if (ctx.busy && it.f === "라방") s *= 0.3;
   return [s, why];
 }
-function pickIdeas(k, avoid = []) {
-  const ctx = ideaCtx(k);
-  const picks = GOAL_ORDER.map(g => {
+const IDEA_MAX = 8; // 일상 추천 탭에 한 번에 보여주는 주제 수
+function pickIdeas(k, avoid = [], n = IDEA_MAX) {
+  const ctx = ideaCtx(k), picks = [], skip = [...avoid];
+  while (picks.length < n) {
+    let got = 0;
+    for (const g of GOAL_ORDER) {
+      if (picks.length >= n) break;
+      const it = pickOne(g, ctx, skip);
+      if (it) { picks.push(it); skip.push(it.t); got++; }
+    }
+    if (!got) break;
+  }
+  store.set(IDEA_SEEN_KEY, JSON.stringify([...ideaSeen].slice(-600)));
+  return {ctx, picks};
+}
+function pickOne(g, ctx, avoid) {
+  {
     let pool = IDEA_POOL.filter(it => it.g === g && !avoid.includes(it.t)).map(it => ({it, r: ideaScore(it, ctx)})).filter(x => x.r[0] > 0);
     let fresh = pool.filter(x => !ideaSeen.has(x.it.t));
     if (!fresh.length) { // 이 목표의 주제를 다 봤으면 본 기록을 비우고 처음부터
@@ -945,9 +965,7 @@ function pickIdeas(k, avoid = []) {
     if (!hit) return null;
     ideaSeen.add(hit.it.t);
     return {...hit.it, whyText: hit.it.why, why: hit.r[1]};
-  }).filter(Boolean);
-  store.set(IDEA_SEEN_KEY, JSON.stringify([...ideaSeen].slice(-600)));
-  return {ctx, picks};
+  }
 }
 function ideaIntro() { // ideas.json 의 analysis 로 안내 문장을 만듦 → 분석을 새로 하면 문장도 자동으로 바뀜
   const a = IDEAS.analysis; if (!a) return "";
@@ -965,8 +983,8 @@ function logShown(picks) { // 추천으로 보여준 기획 기록 → 평가 �
 }
 function ideasHTML() {
   if (!IDEAS) return "";
-  if (!ideaCache[sel]) { ideaCache[sel] = pickIdeas(sel); logShown(ideaCache[sel].picks); }
-  const got = ideaCache[sel];
+  if (!ideaCache.tab) { ideaCache.tab = pickIdeas(TODAY); logShown(ideaCache.tab.picks); }
+  const got = ideaCache.tab;
   const {ctx, picks} = got;
   ideaShown = picks;
   return `<div class="up-head idea-head"><span>💡 일상 콘텐츠 추천</span><button type="button" class="today-btn" id="idea-more">다른 주제</button></div>
@@ -994,17 +1012,21 @@ function voteIdea(i, val) { // 같은 버튼을 다시 누르면 취소
   LEARN = learnMap();
   logView("idea_vote", it.t, `v=${v}|${ideaKeys(it).join("|")}`.slice(0, 200)); // 담당자 평가를 모아 매주 기획에 반영
   if (v === -1) { // 싫어요: 그 자리에 다른 기획으로 바꿔 줌
-    const repl = pickIdeas(sel, ideaShown.map(x => x.t)).picks.find(x => x.g === it.g);
-    if (repl) { ideaShown[i] = repl; ideaCache[sel].picks[i] = repl; }
+    const repl = pickOne(it.g, ideaCtx(TODAY), ideaShown.map(x => x.t));
+    if (repl) { ideaShown[i] = repl; ideaCache.tab.picks[i] = repl; }
     toast("비슷한 형식·주제는 덜 추천할게요");
   } else if (v === 1) toast("비슷한 형식·주제를 더 추천할게요");
-  renderAgenda();
+  renderIdeas();
 }
 function moreIdeas() { // '다른 주제': 지금 보이는 주제는 빼고 새로 고름 (넘긴 주제는 '무난' — 벌점 없이 나중에 다시 나옴)
-  ideaCache[sel] = pickIdeas(sel, ideaShown.map(x => x.t));
-  logShown(ideaCache[sel].picks);
-  renderAgenda();
-  document.querySelector(".idea-head")?.scrollIntoView({block: "nearest"});
+  ideaCache.tab = pickIdeas(TODAY, ideaShown.map(x => x.t));
+  logShown(ideaCache.tab.picks);
+  renderIdeas();
+  $("#idea-scroll").scrollTop = 0;
+}
+function renderIdeas() {
+  if (!IDEAS) return;
+  $("#idea-scroll").innerHTML = `<div class="agenda">${ideasHTML()}</div>`;
 }
 function openIdea(it) {
   const ref = it.ref && IDEAS.refs[it.ref];
@@ -1085,7 +1107,6 @@ function renderAgenda() {
       : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
     <div class="up-head">${sel === TODAY ? `다가오는 ${UPCOMING}일` : `이후 ${UPCOMING}일`}</div>
     ${soon.length ? soon.join("") : `<div class="empty sm">${UPCOMING}일 안에 잡힌 콘텐츠가 없어요.</div>`}
-    ${ideasHTML()}
     <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트 · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a></p>`;
 }
 
@@ -1096,10 +1117,12 @@ $("#cal-grid").addEventListener("click", ev => {
   if (d.getMonth() !== cur.getMonth()) { cur = new Date(d.getFullYear(), d.getMonth(), 1); }
   renderCal();
 });
-$("#agenda").addEventListener("click", ev => {
+$("#idea-scroll").addEventListener("click", ev => {
   if (ev.target.closest("#idea-more")) return moreIdeas();
   const vb = ev.target.closest("[data-vote]"); if (vb) return voteIdea(+vb.dataset.vote, +vb.dataset.v);
   const ib = ev.target.closest("[data-idea]"); if (ib) return openIdea(ideaShown[+ib.dataset.idea]);
+});
+$("#agenda").addEventListener("click", ev => {
   const b = ev.target.closest(".entry"); if (b) openEntry(agendaList[+b.dataset.idx]);
 });
 const shift = n => { cur = new Date(cur.getFullYear(), cur.getMonth() + n, 1); renderCal(); };
@@ -1244,7 +1267,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       hasImg ? `사진을 누르면 크게 볼 수 있고, 옆으로 넘겨 다음 사진을 볼 수 있어요.` : ""
     ].filter(Boolean))}
     ${IDEAS ? sec("💡 일상 콘텐츠 추천", [
-      `날짜를 누른 화면 <b>맨 아래</b>에 공구 콘텐츠 사이사이 올리기 좋은 <b>일상 콘텐츠 아이디어</b>가 나와요. 날짜마다 다른 주제를 추천드려요.`,
+      `화면 아래 <b>일상 추천</b> 메뉴에서 공구 콘텐츠 사이사이 올리기 좋은 <b>일상 콘텐츠 아이디어</b>를 한 번에 최대 8개까지 볼 수 있어요.`,
       `이 계정의 최근 게시물 반응${IDEAS.analysis?.comments ? "과 팔로워 댓글" : ""}${used.has("trend") || used.has("search") ? ", 요즘 유행" : ""}${used.has("season") ? "과 계절 키워드" : ""}를 바탕으로 <b>이 계정만을 위해</b> 기획한 주제예요. 매주 월요일에 새 기획이 추가돼요.`,
       goals ? `왼쪽 라벨은 이 콘텐츠의 목표예요: ${goals}` : "",
       srcLine ? `작은 표시는 추천 근거예요. ${srcLine}` : "",
@@ -1253,7 +1276,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       hasMake ? `<b>🍳 만들어보기</b>는 이번 계절에 만들어 보기 좋은 메뉴 예시예요.` : "",
       hasEx ? `<b>📌 예시</b>에는 바로 활용할 수 있는 구체적인 메뉴·장소·소재가 담겨 있어요.` : "",
       `주제를 누르면 <b>기획 의도 · 타깃 · 후킹 문구 · 컷 구성 · 촬영 가이드 · 스토리 연계 · 행동 유도 문구</b>까지 담긴 기획서가 열려요. ${k("기획 메모 복사")}로 메모장에 옮겨 두실 수 있어요.`,
-      `다른 아이디어를 보고 싶으면 ${k("다른 주제")}를 눌러 주세요.`,
+      `다른 아이디어를 보고 싶으면 ${k("다른 주제")}를 눌러 주세요. 지금 보이는 것과 겹치지 않는 다른 8개를 보여 드려요.`,
       `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.`,
       `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.`
     ].filter(Boolean)) : ""}
@@ -1717,6 +1740,7 @@ function monthPage(m) {
 }
 if (!DATA.months.length) document.querySelector('.nav [data-view="v-month"]').hidden = true;
 if (OPINION) document.querySelector('.nav [data-view="v-op"]').hidden = false;
+if (IDEAS) document.querySelector('.nav [data-view="v-idea"]').hidden = false;
 document.querySelector(".nav").style.gridTemplateColumns = `repeat(${document.querySelectorAll(".nav button:not([hidden])").length},1fr)`;
 const monthPager = makePager($("#month-tabs"), $("#month-pager"), DATA.months, m => esc(m.name), monthPage, "monthIdx");
 $("#month-pager").addEventListener("click", ev => {
@@ -1806,7 +1830,7 @@ function renderOpinion() {
 }
 
 /* ---------------- views ---------------- */
-const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months", "v-op": "opinion"};
+const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months", "v-op": "opinion", "v-idea": "ideas"};
 function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== id);
   document.querySelectorAll(".nav button").forEach(b => b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
@@ -1814,6 +1838,7 @@ function showView(id) {
   if (id === "v-prod") prodPager.go(prodPager.idx, false);
   if (id === "v-month") monthPager.go(monthPager.idx, false);
   if (id === "v-op") renderOpinion();
+  if (id === "v-idea") renderIdeas();
 }
 /* ---------------- 휴대폰 뒤로가기: 앱이 꺼지지 않게 ----------------
    뒤로가기를 누르면 ① 사진 크게 보기 ② 캡션 수정 ③ 아래에서 올라온 창(상세·설명·알림) ④ 설치 창 순서로 닫고,
@@ -1855,5 +1880,5 @@ prodPager.init(+(store.get("prodIdx") ?? defaultProd) || 0);
 monthPager.init(+(store.get("monthIdx") ?? 0) || 0);
 const hashView = Object.entries(VIEWS).find(([, h]) => location.hash === "#" + h)?.[0];
 const wanted = hashView || store.get("view") || "v-cal";
-showView((wanted === "v-month" && !DATA.months.length) || (wanted === "v-op" && !OPINION) ? "v-cal" : wanted);
+showView((wanted === "v-month" && !DATA.months.length) || (wanted === "v-op" && !OPINION) || (wanted === "v-idea" && !IDEAS) ? "v-cal" : wanted);
 </script>

@@ -80,7 +80,8 @@
 .inst-head h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.02em}
 .inst-head p{margin:2px 0 0;font-size:13px;color:var(--muted,#777);line-height:1.45}
 .inst-opt{display:block;width:100%;text-align:left;background:var(--surface-2,#f3f3f3);border-radius:16px;padding:13px 14px;margin-bottom:8px;border:1.5px solid transparent}
-.inst-opt:first-of-type:not([hidden]){border-color:var(--accent,#b5523b);background:var(--accent-soft,#f5e4db)}
+.inst-opt:first-of-type:not([hidden]),.inst-opt.inst-pick{border-color:var(--accent,#b5523b);background:var(--accent-soft,#f5e4db)}
+.inst-opt.inst-pick ~ .inst-opt{border-color:transparent;background:var(--surface-2,#f3f3f3)}
 .inst-opt b{display:block;font-size:15.5px;color:var(--ink,#222)}
 .inst-opt span{display:block;font-size:12.5px;color:var(--muted,#777);margin-top:2px;line-height:1.45}
 .inst-opt[hidden]{display:none}
@@ -114,8 +115,10 @@
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
   function sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
-  if (get("instDone")) return;                         // 이 휴대폰에서 이미 설치함
-  if (sget("instLater")) return;                       // 이번에 '나중에'를 눌렀음 (브라우저를 다시 열면 또 물어봄)
+  var forced = /[?&]install=shortcut\b/.test(location.search);   // 카톡·인스타에서 넘어온 경우
+  if (forced) { try { var cu = new URL(location.href); cu.searchParams.delete("install"); history.replaceState(null, "", cu.toString()); } catch (e) {} }
+  if (!forced && get("instDone")) return;              // 이 휴대폰에서 이미 설치함
+  if (!forced && sget("instLater")) return;            // 이번에 '나중에'를 눌렀음 (브라우저를 다시 열면 또 물어봄)
 
   var deferred = null;
   window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; });
@@ -143,13 +146,21 @@
       : "버튼이 안 되면: 오른쪽 위 <b>⋮</b> → <b>다른 브라우저로 열기</b>(또는 ‘크롬으로 열기’)";
     document.getElementById("inst-choices").hidden = true;
     document.getElementById("inst-go").onclick = function () {
-      var url = location.href;
+      var u = new URL(location.href); u.searchParams.set("install", "shortcut"); var url = u.toString();
       if (/KAKAOTALK/i.test(ua)) location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(url);
       else if (isAndroid) location.href = "intent://" + url.replace(/^https?:\/\//, "") + "#Intent;scheme=https;package=com.android.chrome;end";
       else location.href = "x-safari-" + url;
     };
   }
   // 자세한 방법: 이 휴대폰에 맞는 것만 보여 줌 (컴퓨터면 컴퓨터만)
+  if (forced && !inAppBrowser) {
+    var sc = document.getElementById("inst-short"), ch = document.getElementById("inst-choices");
+    ch.insertBefore(sc, ch.firstChild);                 // 바탕화면 바로가기를 맨 위로
+    sc.classList.add("inst-pick");
+    document.getElementById("inst-title").textContent = isIOS ? "홈 화면에 바로가기 만들기" : "바탕화면에 바로가기 만들기";
+    document.getElementById("inst-sub").textContent = (isIOS ? "사파리" : "크롬") + "으로 잘 열렸어요. 아래 버튼을 눌러 바로가기를 만들어 주세요.";
+    document.getElementById("inst-more").open = true;
+  }
   var mine = isAndroid ? "android" : isIOS ? "ios" : "pc";
   [].forEach.call(document.querySelectorAll("#inst-more .inst-sec"), function (s) { s.hidden = s.getAttribute("data-os") !== mine; });
   [].forEach.call(document.querySelectorAll("#inst-more .inst-sec h4"), function (h) { h.hidden = true; });

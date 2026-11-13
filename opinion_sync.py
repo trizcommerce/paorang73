@@ -17,6 +17,21 @@ def _get(url):
         return json.loads(r.read().decode("utf-8"))
 
 
+MONTHS = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
+
+
+def _day(v):
+    """'2026-11-12', 'at:2026-11-12', 'Thu Nov 12 2026 00:00:00 GMT+0900'(시트가 날짜로 바꾼 것) → '2026-11-12'"""
+    s = str(v or "").replace("at:", "").strip()
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    if m:
+        return m.group(0)
+    m = re.match(r"\w{3} (\w{3}) (\d{1,2}) (\d{4})", s)
+    if m and m.group(1) in MONTHS:
+        return f"{m.group(3)}-{MONTHS[m.group(1)]:02d}-{int(m.group(2)):02d}"
+    return s
+
+
 def merge(live, draft, keys):
     """keys: ["headline:0", "loves:2", "changes", ...]"""
     keys = set(keys)
@@ -57,7 +72,7 @@ def apply(here: Path):
     except Exception as e:
         print("opinion sync: skip", e)
         return False
-    if str(draft.get("at")) != str(sel.get("draftAt")):
+    if _day(draft.get("at")) != _day(sel.get("draftAt")):
         print("opinion sync: 체크 목록이 지금 초안과 달라서 건너뜀")
         return False
     p = here / "opinion.json"

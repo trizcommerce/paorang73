@@ -1815,7 +1815,37 @@ function showView(id) {
   if (id === "v-month") monthPager.go(monthPager.idx, false);
   if (id === "v-op") renderOpinion();
 }
-document.querySelector(".nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.view); });
+/* ---------------- 휴대폰 뒤로가기: 앱이 꺼지지 않게 ----------------
+   뒤로가기를 누르면 ① 사진 크게 보기 ② 캡션 수정 ③ 아래에서 올라온 창(상세·설명·알림) ④ 설치 창 순서로 닫고,
+   ⑤ 다른 탭에 있으면 직전 탭으로, ⑥ 캘린더 첫 화면이면 '한 번 더 누르면 나가요' 안내 후 두 번째에 나감. */
+const tabTrail = [];                                  // 지나온 탭 (뒤로가기로 되돌아가기)
+document.querySelector(".nav").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const cur = document.querySelector(".nav button[aria-current]")?.dataset.view;
+  if (cur && cur !== b.dataset.view) { tabTrail.push(cur); if (tabTrail.length > 20) tabTrail.shift(); }
+  showView(b.dataset.view);
+});
+let exitArmed = 0;
+function backGuard() { try { history.pushState({calGuard: 1}, ""); } catch (e) {} }
+try { history.replaceState({calBase: 1}, ""); } catch (e) {}
+backGuard();
+window.addEventListener("popstate", () => {
+  const inst = document.getElementById("inst");
+  let handled = closeViewer() || closeEditor();
+  if (!handled && !$("#sheet").hidden) { closeSheet(); handled = true; }
+  if (!handled && inst && !inst.hidden) { inst.hidden = true; handled = true; }
+  if (!handled && tabTrail.length) { showView(tabTrail.pop()); handled = true; }
+  if (!handled) {
+    const onCal = !$("#v-cal").hidden;
+    if (!onCal) { showView("v-cal"); handled = true; }
+  }
+  if (!handled) {
+    if (Date.now() - exitArmed < 2000) { history.back(); return; }   // 2초 안에 한 번 더 → 나가기
+    exitArmed = Date.now();
+    toast("뒤로 버튼을 한 번 더 누르면 나가요");
+  }
+  backGuard();
+});
 
 renderCal();
 askViewer();

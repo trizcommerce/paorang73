@@ -24,11 +24,11 @@ CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
 NAME = CONFIG["app_name"]
 SHORT = CONFIG.get("short_name", NAME)
 GREEN = "#2E6A27"
-BG = "#F3F5F0"
+BG = "#F6F1EA"
 
 HEAD = f"""<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="{BG}" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111512" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#171210" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-title" content="{SHORT}">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
@@ -137,6 +137,9 @@ def main():
             shutil.copy(saved, PWA / saved.name)
         else:
             icon(n, PWA / f"icon-{n}.png")
+    # 설치 파일(안드로이드 APK, 아이폰 프로필)과 내려받기 페이지
+    if (HERE / "downloads").is_dir():
+        shutil.copytree(HERE / "downloads", PWA / "downloads")
     data = json.loads(DATA.read_text(encoding="utf-8"))
     # 휴대폰 캘린더 구독용 파일: 알림 시점(당일 오전 / 하루 전 / 3일 전)마다 하나씩
     for fname, alarm_at, suffix in cal_feed.ALARMS:

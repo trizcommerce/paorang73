@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.triz.cal.paorang73'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.triz.cal.paorang73'
+        minSdk 24
+        targetSdk 34
+        // 빌드할 때마다 GitHub Actions가 번호를 올려 준다(앱이 새 버전을 알아채는 기준)
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName '1.' + (System.getenv('VERSION_CODE') ?: '1')
+    }
+    signingConfigs {
+        release {
+            storeFile file('../release.keystore')
+            storePassword 'berbertest'
+            keyAlias 'berbertest'
+            keyPassword 'berbertest'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

@@ -151,13 +151,15 @@ def main():
     (PWA / "version.txt").write_text(digest, encoding="utf-8")
     # 화면이 자기 버전을 알고 있어야 새 버전이 올라왔는지 비교할 수 있음
     (PWA / "index.html").write_text(html.replace("__APPVER__", digest), encoding="utf-8")
+    # 아이콘이 바뀌면 주소 끝(?v=)도 바뀌어서, 설치된 앱(안드로이드·PC 크롬)이 새 아이콘을 알아채고 스스로 바꾼다
+    iv = hashlib.sha256((PWA / "icon-512.png").read_bytes()).hexdigest()[:8]
     manifest = {
-        "name": NAME, "short_name": SHORT, "lang": "ko",
+        "id": "./", "name": NAME, "short_name": SHORT, "lang": "ko",
         "start_url": "./", "scope": "./", "display": "standalone",
         "background_color": BG, "theme_color": BG,
         "icons": [
-            {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-            {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+            {"src": f"icon-192.png?v={iv}", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": f"icon-512.png?v={iv}", "sizes": "512x512", "type": "image/png", "purpose": "any"},
         ],
     }
     (PWA / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
         setContentView(web);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
+        s.setUserAgentString(s.getUserAgentString() + " TrizCalendarApp"); // 웹 쪽에서 "앱으로 열었음"을 알아보는 표시
         s.setDomStorageEnabled(true);       // 캡션 수정본·이름 등 휴대폰 저장 기능
         s.setDatabaseEnabled(true);
         s.setLoadWithOverviewMode(true);
